@@ -16,8 +16,8 @@ This implementation plan converts the book management design into discrete codin
   - Create basic test setup
   - _Requirements: 6.1, 6.2, 8.1_
 
-- [ ] 2. Implement core data models and database setup
-  - [ ] 2.1 Create Book model with SQLAlchemy
+- [x] 2. Implement core data models and database setup
+  - [x] 2.1 Create Book model with SQLAlchemy
     - Define Book class with all required fields (ISBN, title, authors, publisher, etc.)
     - Use DATE type for published_date field
     - Use TEXT type for thumbnail_url and cover_image_url fields
@@ -29,7 +29,7 @@ This implementation plan converts the book management design into discrete codin
     - **Property 3: Data Persistence**
     - **Validates: Requirements 1.3**
 
-  - [ ] 2.3 Create database initialization and migration scripts
+  - [x] 2.3 Create database initialization and migration scripts
     - Set up SQLite database creation and table initialization
     - _Requirements: 1.3_
 

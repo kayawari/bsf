@@ -22,6 +22,9 @@ def create_app(config_name='default'):
     # Initialize extensions with app
     db.init_app(app)
     
+    # Import models to ensure they are registered with SQLAlchemy
+    from app.models import Book
+    
     # Register blueprints (routes will be added in later tasks)
     from app.routes import main
     app.register_blueprint(main)
