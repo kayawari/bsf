@@ -6,11 +6,14 @@ This implementation plan converts the book management design into discrete codin
 
 ## Tasks
 
-- [ ] 1. Set up project structure and dependencies
+- [x] 1. Set up project structure and dependencies
   - Create Python virtual environment and project directory structure
   - Install Flask, SQLAlchemy, requests, pytest, hypothesis
   - Include htmx library (via CDN or local copy)
   - Set up basic Flask application with configuration
+  - Create basic templates with htmx integration
+  - Set up responsive CSS foundation
+  - Create basic test setup
   - _Requirements: 6.1, 6.2, 8.1_
 
 - [ ] 2. Implement core data models and database setup
@@ -22,7 +25,7 @@ This implementation plan converts the book management design into discrete codin
     - Set up database schema with proper constraints and indexes
     - _Requirements: 1.3, 7.2_
 
-  - [ ] 2.2 Write property test for Book model
+  - [ ]* 2.2 Write property test for Book model
     - **Property 3: Data Persistence**
     - **Validates: Requirements 1.3**
 
@@ -36,7 +39,7 @@ This implementation plan converts the book management design into discrete codin
     - Create ISBN normalization function to convert ISBN-10 to ISBN-13
     - _Requirements: 1.1, 1.2, 1.4_
 
-  - [ ] 3.2 Write property tests for ISBN validation
+  - [ ]* 3.2 Write property tests for ISBN validation
     - **Property 1: ISBN Validation and Format Support**
     - **Property 2: Invalid ISBN Rejection**
     - **Validates: Requirements 1.1, 1.2, 1.4**
@@ -45,7 +48,7 @@ This implementation plan converts the book management design into discrete codin
     - Create function to check if ISBN already exists in database
     - _Requirements: 1.5_
 
-  - [ ] 3.4 Write property test for duplicate prevention
+  - [ ]* 3.4 Write property test for duplicate prevention
     - **Property 4: Duplicate Prevention**
     - **Validates: Requirements 1.5**
 
@@ -59,7 +62,7 @@ This implementation plan converts the book management design into discrete codin
     - Add rate limiting and retry logic
     - _Requirements: 2.1, 2.2, 2.3_
 
-  - [ ] 5.2 Write property tests for API integration
+  - [ ]* 5.2 Write property tests for API integration
     - **Property 5: API Integration and Data Extraction**
     - **Property 6: API Error Handling**
     - **Property 7: Incomplete Data Handling**
@@ -76,7 +79,7 @@ This implementation plan converts the book management design into discrete codin
     - Ensure proper character handling in database operations
     - _Requirements: 4.1, 4.2_
 
-  - [ ] 6.2 Write property tests for international character handling
+  - [ ]* 6.2 Write property tests for international character handling
     - **Property 10: Character Encoding Support**
     - **Property 11: Mixed Language Text Support**
     - **Validates: Requirements 4.1, 4.2, 4.3, 4.4**
@@ -104,7 +107,7 @@ This implementation plan converts the book management design into discrete codin
     - Ensure templates work without JavaScript (progressive enhancement)
     - _Requirements: 3.1, 3.2, 3.3, 4.3, 8.2, 8.4, 8.5, 9.1, 9.2, 9.3, 9.6_
 
-  - [ ] 7.3 Write property tests for web interface, htmx functionality, and responsive design
+  - [ ]* 7.3 Write property tests for web interface, htmx functionality, and responsive design
     - **Property 8: Book Collection Display**
     - **Property 9: Thumbnail Placeholder**
     - **Property 13: Form Submission Handling**
@@ -128,7 +131,7 @@ This implementation plan converts the book management design into discrete codin
     - Ensure touch-friendly navigation elements for mobile
     - _Requirements: 7.1, 7.2, 7.4, 8.4, 9.5, 9.6_
 
-  - [ ] 8.2 Write property tests for detail view, htmx navigation, and responsive behavior
+  - [ ]* 8.2 Write property tests for detail view, htmx navigation, and responsive behavior
     - **Property 14: Book Detail Navigation**
     - **Property 15: Comprehensive Detail Display**
     - **Property 16: Incomplete Detail Data Handling**
@@ -145,7 +148,7 @@ This implementation plan converts the book management design into discrete codin
     - Add logging for debugging and monitoring
     - _Requirements: 5.1, 5.2, 5.3, 5.4_
 
-  - [ ] 9.2 Write property tests for error handling
+  - [ ]* 9.2 Write property tests for error handling
     - **Property 12: System Error Resilience**
     - **Validates: Requirements 5.4**
 
@@ -155,7 +158,7 @@ This implementation plan converts the book management design into discrete codin
     - _Requirements: 5.1, 5.2, 5.5_
 
 - [ ] 10. Integration and final testing
-  - [ ] 10.1 Create integration tests for end-to-end workflows with htmx and responsive design
+  - [ ]* 10.1 Create integration tests for end-to-end workflows with htmx and responsive design
     - Test complete book addition workflow from ISBN input to display using htmx
     - Test navigation between collection list and detail views with htmx
     - Test responsive behavior across different screen sizes
@@ -163,7 +166,7 @@ This implementation plan converts the book management design into discrete codin
     - Test progressive enhancement (functionality without JavaScript)
     - _Requirements: All_
 
-  - [ ] 10.2 Write comprehensive unit tests for edge cases
+  - [ ]* 10.2 Write comprehensive unit tests for edge cases
     - Test empty collection display across different screen sizes
     - Test various API failure scenarios with responsive layouts
     - Test international character edge cases on mobile devices
@@ -175,7 +178,7 @@ This implementation plan converts the book management design into discrete codin
 
 ## Notes
 
-- All tasks are required for comprehensive implementation
+- Tasks marked with `*` are optional and can be skipped for faster MVP
 - Each task references specific requirements for traceability
 - Property tests validate universal correctness properties across all inputs
 - Unit tests validate specific examples and edge cases
