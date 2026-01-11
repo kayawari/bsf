@@ -31,6 +31,18 @@ A web application for managing purchased books by manually inputting ISBN number
    ```bash
    python run.py
    ```
+   
+   The application will start on http://localhost:8000 with debug mode enabled for development.
+   
+   You can also specify a custom port:
+   ```bash
+   PORT=5000 python run.py
+   ```
+   
+   **Port Conflicts:** If you encounter port conflicts, you can check what's using a port:
+   ```bash
+   python scripts/check_port.py 8000
+   ```
 
 5. **Run tests:**
    ```bash
@@ -51,6 +63,7 @@ The application supports multiple configuration environments:
 - `SECRET_KEY`: Flask secret key for sessions
 - `DATABASE_URL`: Database connection string
 - `GOOGLE_BOOKS_API_KEY`: Optional Google Books API key
+- `PORT`: Port number for the application (default: 8000)
 
 ### Instance Configuration
 
