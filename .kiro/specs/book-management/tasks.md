@@ -33,8 +33,8 @@ This implementation plan converts the book management design into discrete codin
     - Set up SQLite database creation and table initialization
     - _Requirements: 1.3_
 
-- [ ] 3. Implement ISBN validation and processing
-  - [ ] 3.1 Create ISBN validation functions
+- [x] 3. Implement ISBN validation and processing
+  - [x] 3.1 Create ISBN validation functions
     - Implement ISBN-10 and ISBN-13 format validation with checksum verification
     - Create ISBN normalization function to convert ISBN-10 to ISBN-13
     - _Requirements: 1.1, 1.2, 1.4_
@@ -44,7 +44,7 @@ This implementation plan converts the book management design into discrete codin
     - **Property 2: Invalid ISBN Rejection**
     - **Validates: Requirements 1.1, 1.2, 1.4**
 
-  - [ ] 3.3 Implement duplicate detection logic
+  - [x] 3.3 Implement duplicate detection logic
     - Create function to check if ISBN already exists in database
     - _Requirements: 1.5_
 
