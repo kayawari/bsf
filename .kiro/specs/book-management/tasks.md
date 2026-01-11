@@ -52,11 +52,11 @@ This implementation plan converts the book management design into discrete codin
     - **Property 4: Duplicate Prevention**
     - **Validates: Requirements 1.5**
 
-- [ ] 4. Checkpoint - Ensure all tests pass
+- [x] 4. Checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 5. Implement Google Books API integration
-  - [ ] 5.1 Create Google Books API client
+- [x] 5. Implement Google Books API integration
+  - [x] 5.1 Create Google Books API client
     - Implement API request functions with proper error handling
     - Create response parsing functions to extract book metadata
     - Add rate limiting and retry logic
@@ -68,83 +68,72 @@ This implementation plan converts the book management design into discrete codin
     - **Property 7: Incomplete Data Handling**
     - **Validates: Requirements 2.1, 2.2, 2.3, 2.4**
 
-  - [ ] 5.3 Implement book data processing and storage
+  - [x] 5.3 Implement book data processing and storage
     - Create functions to process API responses and save to database
     - Handle missing or incomplete data gracefully
     - _Requirements: 2.2, 2.4_
 
-- [ ] 6. Implement character encoding support
-  - [ ] 6.1 Set up UTF-8 character encoding handling
-    - Configure Flask application for UTF-8 encoding
-    - Ensure proper character handling in database operations
-    - _Requirements: 4.1, 4.2_
-
-  - [ ]* 6.2 Write property tests for international character handling
-    - **Property 10: Character Encoding Support**
-    - **Property 11: Mixed Language Text Support**
-    - **Validates: Requirements 4.1, 4.2, 4.3, 4.4**
-
-  - [ ] 6.3 Create templates with international character support
-    - Ensure proper UTF-8 meta tags in HTML templates
-    - Test display of international characters
-    - _Requirements: 4.3, 4.4_
-
-- [ ] 7. Implement web interface and routing with htmx
-  - [ ] 7.1 Create Flask routes for main functionality with htmx support
-    - Implement routes for home page, book addition, collection display
-    - Add htmx-enhanced form handling for ISBN input
-    - Create routes that return HTML fragments for htmx requests
+- [ ] 6. Implement web interface routes and forms with htmx
+  - [ ] 6.1 Create Flask routes for ISBN input and book management
+    - Implement route for ISBN form submission with htmx support
+    - Create route for book collection display with htmx fragments
+    - Add routes for book detail view with htmx navigation
     - Implement progressive enhancement fallbacks
-    - _Requirements: 6.3, 6.4, 8.2, 8.3, 8.5_
+    - _Requirements: 1.1, 1.2, 1.5, 6.3, 6.4, 8.2, 8.3, 8.5_
 
-  - [ ] 7.2 Create HTML templates with international character support, htmx integration, and responsive design
-    - Design responsive templates for book collection display with htmx attributes
-    - Implement CSS media queries for desktop, tablet, and mobile layouts
-    - Implement proper UTF-8 character encoding
-    - Add htmx-powered dynamic interactions (form submission, navigation)
+  - [ ] 6.2 Create HTML templates with htmx integration and responsive design
+    - Design responsive ISBN input form with htmx attributes
+    - Create book collection display template with htmx-powered interactions
+    - Implement book detail view template with responsive layout
     - Add placeholder images for missing thumbnails with responsive sizing
     - Ensure touch-friendly interface elements for mobile devices
     - Ensure templates work without JavaScript (progressive enhancement)
-    - _Requirements: 3.1, 3.2, 3.3, 4.3, 8.2, 8.4, 8.5, 9.1, 9.2, 9.3, 9.6_
+    - _Requirements: 3.1, 3.2, 3.3, 4.3, 7.1, 7.2, 7.4, 8.2, 8.4, 8.5, 9.1, 9.2, 9.3, 9.6_
 
-  - [ ]* 7.3 Write property tests for web interface, htmx functionality, and responsive design
+  - [ ]* 6.3 Write property tests for web interface and htmx functionality
     - **Property 8: Book Collection Display**
     - **Property 9: Thumbnail Placeholder**
     - **Property 13: Form Submission Handling**
     - **Property 19: HTMX AJAX Interactions**
     - **Property 20: HTML Fragment Responses**
+    - **Property 21: HTMX Navigation**
     - **Property 22: Progressive Enhancement**
+    - **Validates: Requirements 3.1, 3.2, 3.3, 6.4, 7.1, 7.4, 8.2, 8.3, 8.4, 8.5**
+
+- [ ] 7. Implement responsive design and mobile optimization
+  - [ ] 7.1 Enhance CSS for responsive layouts
+    - Implement CSS media queries for desktop, tablet, and mobile layouts
+    - Add responsive book collection grid/list display
+    - Create mobile-optimized book detail view with vertical stacking
+    - Ensure touch-friendly interface sizing (minimum 44px touch targets)
+    - _Requirements: 9.1, 9.2, 9.3, 9.4, 9.5, 9.6_
+
+  - [ ]* 7.2 Write property tests for responsive design
     - **Property 23: Desktop Layout Display**
     - **Property 24: Tablet Layout Adaptation**
     - **Property 25: Mobile Layout Optimization**
     - **Property 26: Responsive Layout Adjustment**
-    - **Property 28: Touch Interface Sizing**
-    - **Validates: Requirements 3.1, 3.2, 3.3, 6.4, 8.2, 8.3, 8.5, 9.1, 9.2, 9.3, 9.4, 9.6**
-
-- [ ] 8. Implement book detail view functionality with htmx and responsive design
-  - [ ] 8.1 Create book detail route and template with htmx navigation and responsive layout
-    - Implement route to display individual book details
-    - Create responsive template showing comprehensive book information
-    - Implement mobile-optimized vertical stacking of information
-    - Add htmx-powered navigation back to collection list
-    - Implement htmx-enhanced smooth transitions between views
-    - Ensure touch-friendly navigation elements for mobile
-    - _Requirements: 7.1, 7.2, 7.4, 8.4, 9.5, 9.6_
-
-  - [ ]* 8.2 Write property tests for detail view, htmx navigation, and responsive behavior
-    - **Property 14: Book Detail Navigation**
-    - **Property 15: Comprehensive Detail Display**
-    - **Property 16: Incomplete Detail Data Handling**
-    - **Property 17: Detail View Navigation**
-    - **Property 18: Detail View Cover Placeholder**
-    - **Property 21: HTMX Navigation**
     - **Property 27: Mobile Detail View Stacking**
-    - **Validates: Requirements 3.6, 7.1, 7.2, 7.3, 7.4, 7.5, 8.4, 9.5**
+    - **Property 28: Touch Interface Sizing**
+    - **Validates: Requirements 9.1, 9.2, 9.3, 9.4, 9.5, 9.6**
+
+- [ ] 8. Implement character encoding support and internationalization
+  - [ ] 8.1 Set up UTF-8 character encoding handling
+    - Configure Flask application for UTF-8 encoding
+    - Ensure proper character handling in database operations
+    - Update templates with proper UTF-8 meta tags
+    - Test display of international characters
+    - _Requirements: 4.1, 4.2, 4.3, 4.4_
+
+  - [ ]* 8.2 Write property tests for international character handling
+    - **Property 10: Character Encoding Support**
+    - **Property 11: Mixed Language Text Support**
+    - **Validates: Requirements 4.1, 4.2, 4.3, 4.4**
 
 - [ ] 9. Implement comprehensive error handling
   - [ ] 9.1 Create error handling middleware and templates
     - Implement global error handlers for different error types
-    - Create Japanese error message templates
+    - Create user-friendly error message templates
     - Add logging for debugging and monitoring
     - _Requirements: 5.1, 5.2, 5.3, 5.4_
 
@@ -158,7 +147,7 @@ This implementation plan converts the book management design into discrete codin
     - _Requirements: 5.1, 5.2, 5.5_
 
 - [ ] 10. Integration and final testing
-  - [ ]* 10.1 Create integration tests for end-to-end workflows with htmx and responsive design
+  - [ ]* 10.1 Create integration tests for end-to-end workflows
     - Test complete book addition workflow from ISBN input to display using htmx
     - Test navigation between collection list and detail views with htmx
     - Test responsive behavior across different screen sizes
