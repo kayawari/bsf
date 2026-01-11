@@ -40,7 +40,7 @@ def test_main_route():
     with app.test_client() as client:
         response = client.get('/')
         assert response.status_code == 200
-        assert b'Book Management Application' in response.data
+        assert b'Book Management' in response.data
         assert b'htmx' in response.data  # Check htmx is included
 
 def test_config_loading():

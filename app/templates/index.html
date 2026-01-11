@@ -3,12 +3,60 @@
 {% block title %}Book Management - Home{% endblock %}
 
 {% block content %}
-<h1>Book Management Application</h1>
-<p>Welcome to your personal book collection manager.</p>
-<p>This application allows you to manage your purchased books by entering ISBN numbers.</p>
+<div id="main-content">
+    <header class="app-header">
+        <h1>📚 Book Management</h1>
+        <p class="app-subtitle">Manage your personal book collection</p>
+    </header>
 
-<!-- Placeholder for future book collection display -->
-<div id="book-collection">
-    <p>Your book collection will appear here.</p>
+    <!-- ISBN Input Form -->
+    <section class="isbn-input-section">
+        <form id="isbn-form" 
+              hx-post="{{ url_for('main.add_book') }}"
+              hx-target="#book-collection"
+              hx-swap="innerHTML"
+              hx-indicator="#loading-indicator"
+              action="{{ url_for('main.add_book') }}"
+              method="post">
+            <div class="form-group">
+                <label for="isbn">Enter ISBN:</label>
+                <div class="input-group">
+                    <input type="text" 
+                           id="isbn" 
+                           name="isbn" 
+                           placeholder="Enter ISBN-10 or ISBN-13" 
+                           required
+                           autocomplete="off"
+                           class="isbn-input">
+                    <button type="submit" class="add-button">Add Book</button>
+                </div>
+                <small class="help-text">Enter the ISBN number from your book (with or without hyphens)</small>
+            </div>
+            <div id="loading-indicator" class="loading-indicator htmx-indicator">
+                <span>Adding book...</span>
+            </div>
+        </form>
+    </section>
+
+    <!-- Flash Messages (for progressive enhancement) -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="flash-messages">
+                {% for category, message in messages %}
+                    <div class="flash-message flash-{{ category }}" role="alert">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    <!-- Book Collection Display -->
+    <section class="collection-section">
+        <h2>Your Collection</h2>
+        <div id="book-collection">
+            {% include 'fragments/book_collection.html' %}
+        </div>
+    </section>
 </div>
 {% endblock %}

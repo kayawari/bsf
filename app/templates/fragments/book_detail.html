@@ -1,0 +1,51 @@
+<!-- Book detail fragment for htmx responses -->
+<div class="book-detail">
+    <div class="book-detail-header">
+        <button class="back-button" 
+                hx-get="{{ url_for('main.index') }}"
+                hx-target="#main-content"
+                hx-push-url="true">
+            ← Back to Collection
+        </button>
+    </div>
+    
+    <div class="book-detail-content">
+        <div class="book-cover">
+            {% if book.cover_image_url or book.thumbnail_url %}
+                <img src="{{ book.cover_image_url or book.thumbnail_url }}" 
+                     alt="Cover of {{ book.title }}" 
+                     class="detail-cover-image">
+            {% else %}
+                <div class="placeholder-cover">
+                    <span>📚</span>
+                    <p>No Cover Available</p>
+                </div>
+            {% endif %}
+        </div>
+        
+        <div class="book-metadata">
+            <h1 class="detail-title">{{ book.title or 'Unknown Title' }}</h1>
+            
+            {% if book.authors_display %}
+                <p class="detail-authors"><strong>Authors:</strong> {{ book.authors_display }}</p>
+            {% endif %}
+            
+            {% if book.publisher %}
+                <p class="detail-publisher"><strong>Publisher:</strong> {{ book.publisher }}</p>
+            {% endif %}
+            
+            {% if book.published_date %}
+                <p class="detail-date"><strong>Published:</strong> {{ book.published_date.strftime('%B %d, %Y') }}</p>
+            {% endif %}
+            
+            <p class="detail-isbn"><strong>ISBN:</strong> {{ book.isbn }}</p>
+            
+            {% if book.description %}
+                <div class="detail-description">
+                    <h3>Description</h3>
+                    <p>{{ book.description }}</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>

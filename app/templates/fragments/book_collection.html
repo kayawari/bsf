@@ -1,0 +1,39 @@
+<!-- Book collection fragment for htmx responses -->
+<div class="book-grid">
+    {% if books %}
+        {% for book in books %}
+        <div class="book-card">
+            <div class="book-thumbnail">
+                {% if book.thumbnail_url %}
+                    <img src="{{ book.thumbnail_url }}" alt="Cover of {{ book.title }}" loading="lazy">
+                {% else %}
+                    <div class="placeholder-thumbnail">
+                        <span>📚</span>
+                        <p>No Cover</p>
+                    </div>
+                {% endif %}
+            </div>
+            <div class="book-info">
+                <h3 class="book-title">
+                    <a href="{{ url_for('main.book_detail', book_id=book.id) }}" 
+                       hx-get="{{ url_for('main.book_detail', book_id=book.id) }}"
+                       hx-target="#main-content"
+                       hx-push-url="true">
+                        {{ book.title or 'Unknown Title' }}
+                    </a>
+                </h3>
+                <p class="book-authors">{{ book.authors_display or 'Unknown Author' }}</p>
+                <p class="book-publisher">{{ book.publisher or 'Unknown Publisher' }}</p>
+                {% if book.published_date %}
+                    <p class="book-date">{{ book.published_date.strftime('%Y') }}</p>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="empty-collection">
+            <p>Your book collection is empty.</p>
+            <p>Add your first book by entering an ISBN above!</p>
+        </div>
+    {% endif %}
+</div>

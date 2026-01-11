@@ -73,15 +73,15 @@ This implementation plan converts the book management design into discrete codin
     - Handle missing or incomplete data gracefully
     - _Requirements: 2.2, 2.4_
 
-- [ ] 6. Implement web interface routes and forms with htmx
-  - [ ] 6.1 Create Flask routes for ISBN input and book management
+- [x] 6. Implement web interface routes and forms with htmx
+  - [x] 6.1 Create Flask routes for ISBN input and book management
     - Implement route for ISBN form submission with htmx support
     - Create route for book collection display with htmx fragments
     - Add routes for book detail view with htmx navigation
     - Implement progressive enhancement fallbacks
     - _Requirements: 1.1, 1.2, 1.5, 6.3, 6.4, 8.2, 8.3, 8.5_
 
-  - [ ] 6.2 Create HTML templates with htmx integration and responsive design
+  - [x] 6.2 Create HTML templates with htmx integration and responsive design
     - Design responsive ISBN input form with htmx attributes
     - Create book collection display template with htmx-powered interactions
     - Implement book detail view template with responsive layout

@@ -19,6 +19,10 @@ def create_app(config_name='default'):
         # Instance config is optional
         pass
     
+    # Set secret key for flash messages if not already set
+    if not app.config.get('SECRET_KEY'):
+        app.config['SECRET_KEY'] = 'dev-secret-key-change-in-production'
+    
     # Initialize extensions with app
     db.init_app(app)
     

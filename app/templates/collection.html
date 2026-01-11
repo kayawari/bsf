@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+
+{% block title %}Book Collection - Book Management{% endblock %}
+
+{% block content %}
+<div id="main-content">
+    <header class="app-header">
+        <h1>📚 Your Book Collection</h1>
+        <a href="{{ url_for('main.index') }}" class="back-link">← Back to Home</a>
+    </header>
+
+    <section class="collection-section">
+        <div id="book-collection">
+            {% include 'fragments/book_collection.html' %}
+        </div>
+    </section>
+</div>
+{% endblock %}

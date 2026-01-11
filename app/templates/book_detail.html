@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+
+{% block title %}{{ book.title or 'Book Details' }} - Book Management{% endblock %}
+
+{% block content %}
+<div id="main-content">
+    {% include 'fragments/book_detail.html' %}
+</div>
+{% endblock %}
