@@ -1,6 +1,6 @@
 """Book model for the book management application."""
 
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 from typing import Optional, List
 import json
 from sqlalchemy import Column, Integer, String, Text, Date, DateTime, Index
@@ -31,8 +31,8 @@ class Book(db.Model):
     cover_image_url = Column(Text, nullable=True)
     
     # Timestamps
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
-    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     
     # Indexes for performance
     __table_args__ = (
