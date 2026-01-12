@@ -2,7 +2,8 @@
 Google Books API client for retrieving book metadata.
 
 This module provides functions for querying the Google Books API,
-handling responses, and extracting book information.
+handling responses, and extracting book information with comprehensive
+error handling and fallback behavior.
 """
 
 import time
@@ -20,6 +21,8 @@ DEFAULT_TIMEOUT = 10  # seconds
 MAX_RETRIES = 3
 RETRY_DELAY = 1  # seconds
 RATE_LIMIT_DELAY = 0.1  # seconds between requests
+CIRCUIT_BREAKER_THRESHOLD = 5  # failures before circuit opens
+CIRCUIT_BREAKER_TIMEOUT = 300  # seconds to wait before trying again
 
 
 class GoogleBooksAPIError(Exception):
@@ -32,13 +35,69 @@ class RateLimitError(GoogleBooksAPIError):
     pass
 
 
+class ServiceUnavailableError(GoogleBooksAPIError):
+    """Exception raised when the API service is unavailable."""
+    pass
+
+
+class CircuitBreakerError(GoogleBooksAPIError):
+    """Exception raised when circuit breaker is open."""
+    pass
+
+
+class CircuitBreaker:
+    """Simple circuit breaker implementation for API resilience."""
+    
+    def __init__(self, failure_threshold=CIRCUIT_BREAKER_THRESHOLD, timeout=CIRCUIT_BREAKER_TIMEOUT):
+        self.failure_threshold = failure_threshold
+        self.timeout = timeout
+        self.failure_count = 0
+        self.last_failure_time = None
+        self.state = 'closed'  # closed, open, half-open
+    
+    def call(self, func, *args, **kwargs):
+        """Execute function with circuit breaker protection."""
+        if self.state == 'open':
+            if time.time() - self.last_failure_time > self.timeout:
+                self.state = 'half-open'
+                logger.info("Circuit breaker transitioning to half-open state")
+            else:
+                raise CircuitBreakerError("Circuit breaker is open - API service unavailable")
+        
+        try:
+            result = func(*args, **kwargs)
+            if self.state == 'half-open':
+                self.reset()
+            return result
+        except Exception as e:
+            self.record_failure()
+            raise e
+    
+    def record_failure(self):
+        """Record a failure and potentially open the circuit."""
+        self.failure_count += 1
+        self.last_failure_time = time.time()
+        
+        if self.failure_count >= self.failure_threshold:
+            self.state = 'open'
+            logger.warning(f"Circuit breaker opened after {self.failure_count} failures")
+    
+    def reset(self):
+        """Reset the circuit breaker to closed state."""
+        self.failure_count = 0
+        self.last_failure_time = None
+        self.state = 'closed'
+        logger.info("Circuit breaker reset to closed state")
+
+
 class APIClient:
-    """Google Books API client with rate limiting and retry logic."""
+    """Google Books API client with rate limiting, retry logic, and circuit breaker."""
     
     def __init__(self):
         """Initialize the API client."""
         self.session = requests.Session()
         self.last_request_time = 0
+        self.circuit_breaker = CircuitBreaker()
         
     def _rate_limit(self):
         """Implement basic rate limiting."""
@@ -51,9 +110,9 @@ class APIClient:
         
         self.last_request_time = time.time()
     
-    def _make_request(self, url: str, params: Dict[str, Any]) -> requests.Response:
+    def _make_request_internal(self, url: str, params: Dict[str, Any]) -> requests.Response:
         """
-        Make HTTP request with rate limiting and error handling.
+        Internal method to make HTTP request with rate limiting and error handling.
         
         Args:
             url: API endpoint URL
@@ -65,6 +124,7 @@ class APIClient:
         Raises:
             GoogleBooksAPIError: For API-related errors
             RateLimitError: When rate limit is exceeded
+            ServiceUnavailableError: When service is unavailable
         """
         self._rate_limit()
         
@@ -76,23 +136,44 @@ class APIClient:
                 headers={'User-Agent': 'BookManager/1.0'}
             )
             
-            # Handle rate limiting
+            # Handle different HTTP status codes
             if response.status_code == 429:
                 raise RateLimitError("API rate limit exceeded")
-            
-            # Handle other HTTP errors
-            if response.status_code >= 400:
+            elif response.status_code == 503:
+                raise ServiceUnavailableError("Google Books API service unavailable")
+            elif response.status_code == 502 or response.status_code == 504:
+                raise ServiceUnavailableError("Google Books API gateway error")
+            elif response.status_code >= 500:
+                raise ServiceUnavailableError(f"Google Books API server error: {response.status_code}")
+            elif response.status_code >= 400:
                 logger.error(f"API request failed with status {response.status_code}: {response.text}")
                 raise GoogleBooksAPIError(f"API request failed with status {response.status_code}")
             
             return response
             
         except requests.exceptions.Timeout:
-            raise GoogleBooksAPIError("Request timeout")
+            raise ServiceUnavailableError("Request timeout - Google Books API may be slow or unavailable")
         except requests.exceptions.ConnectionError:
-            raise GoogleBooksAPIError("Connection error")
+            raise ServiceUnavailableError("Connection error - unable to reach Google Books API")
         except requests.exceptions.RequestException as e:
-            raise GoogleBooksAPIError(f"Request failed: {str(e)}")
+            raise ServiceUnavailableError(f"Network error: {str(e)}")
+    
+    def _make_request(self, url: str, params: Dict[str, Any]) -> requests.Response:
+        """
+        Make HTTP request with circuit breaker protection.
+        
+        Args:
+            url: API endpoint URL
+            params: Query parameters
+            
+        Returns:
+            Response object
+            
+        Raises:
+            GoogleBooksAPIError: For API-related errors
+            CircuitBreakerError: When circuit breaker is open
+        """
+        return self.circuit_breaker.call(self._make_request_internal, url, params)
     
     def search_by_isbn(self, isbn: str) -> Dict[str, Any]:
         """
@@ -122,7 +203,7 @@ class APIClient:
 
 def search_book_by_isbn_with_retry(isbn: str) -> Tuple[Optional[Dict[str, Any]], Optional[str]]:
     """
-    Search for book by ISBN with retry logic.
+    Search for book by ISBN with retry logic and graceful error handling.
     
     Args:
         isbn: ISBN string
@@ -143,6 +224,11 @@ def search_book_by_isbn_with_retry(isbn: str) -> Tuple[Optional[Dict[str, Any]],
             logger.info(f"Successfully retrieved book data for ISBN {isbn}")
             return response, None
             
+        except CircuitBreakerError as e:
+            error_msg = "Google Books API is temporarily unavailable. Please try again later."
+            logger.error(f"Circuit breaker open for ISBN {isbn}: {str(e)}")
+            return None, error_msg
+            
         except RateLimitError:
             if attempt < MAX_RETRIES - 1:
                 # Exponential backoff for rate limiting
@@ -151,8 +237,19 @@ def search_book_by_isbn_with_retry(isbn: str) -> Tuple[Optional[Dict[str, Any]],
                 time.sleep(sleep_time)
                 continue
             else:
-                error_msg = "API rate limit exceeded after multiple retries"
+                error_msg = "Google Books API rate limit exceeded. Please try again in a few minutes."
                 logger.error(error_msg)
+                return None, error_msg
+                
+        except ServiceUnavailableError as e:
+            if attempt < MAX_RETRIES - 1:
+                sleep_time = RETRY_DELAY * (2 ** attempt)
+                logger.warning(f"Service unavailable (attempt {attempt + 1}), retrying in {sleep_time} seconds: {str(e)}")
+                time.sleep(sleep_time)
+                continue
+            else:
+                error_msg = "Google Books API is currently unavailable. Please try again later."
+                logger.error(f"Service unavailable after {MAX_RETRIES} attempts: {str(e)}")
                 return None, error_msg
                 
         except GoogleBooksAPIError as e:
@@ -162,8 +259,8 @@ def search_book_by_isbn_with_retry(isbn: str) -> Tuple[Optional[Dict[str, Any]],
                 time.sleep(sleep_time)
                 continue
             else:
-                error_msg = f"API request failed after {MAX_RETRIES} attempts: {str(e)}"
-                logger.error(error_msg)
+                error_msg = f"Unable to retrieve book information from Google Books API. Please check the ISBN and try again."
+                logger.error(f"API request failed after {MAX_RETRIES} attempts: {str(e)}")
                 return None, error_msg
     
     return None, "Unexpected error in retry logic"
@@ -188,7 +285,7 @@ def extract_book_metadata(api_response: Dict[str, Any]) -> Tuple[Optional[Dict[s
         # Check if any books were found
         total_items = api_response.get('totalItems', 0)
         if total_items == 0:
-            return None, "No books found for this ISBN"
+            return None, "No books found for this ISBN in Google Books database"
         
         # Get the first book item
         items = api_response.get('items', [])
@@ -254,7 +351,7 @@ def extract_book_metadata(api_response: Dict[str, Any]) -> Tuple[Optional[Dict[s
 
 def get_book_metadata_by_isbn(isbn: str) -> Tuple[Optional[Dict[str, Any]], Optional[str]]:
     """
-    Get book metadata by ISBN - main public function.
+    Get book metadata by ISBN - main public function with fallback behavior.
     
     Args:
         isbn: ISBN string
@@ -278,3 +375,54 @@ def get_book_metadata_by_isbn(isbn: str) -> Tuple[Optional[Dict[str, Any]], Opti
         return None, extract_error
     
     return metadata, None
+
+
+def create_fallback_metadata(isbn: str) -> Dict[str, Any]:
+    """
+    Create fallback metadata when API is unavailable.
+    
+    Args:
+        isbn: ISBN string
+        
+    Returns:
+        Basic metadata dictionary with ISBN information
+    """
+    return {
+        'title': f"Book with ISBN {isbn}",
+        'authors': [],
+        'publisher': None,
+        'published_date': None,
+        'description': "Book information could not be retrieved from Google Books API. You can edit this information later.",
+        'thumbnail_url': None,
+        'cover_image_url': None,
+    }
+
+
+def get_book_metadata_with_fallback(isbn: str) -> Tuple[Dict[str, Any], bool, Optional[str]]:
+    """
+    Get book metadata with fallback to basic information if API fails.
+    
+    Args:
+        isbn: ISBN string
+        
+    Returns:
+        Tuple of (metadata_dict, is_fallback, warning_message)
+        - metadata_dict: Book metadata (from API or fallback)
+        - is_fallback: True if fallback data was used
+        - warning_message: Warning about fallback usage (if applicable)
+    """
+    if not isbn:
+        return create_fallback_metadata(isbn), True, "Invalid ISBN provided"
+    
+    # Try to get metadata from API
+    metadata, error = get_book_metadata_by_isbn(isbn)
+    
+    if metadata:
+        return metadata, False, None
+    
+    # API failed, use fallback
+    fallback_metadata = create_fallback_metadata(isbn)
+    warning_message = f"Could not retrieve book information from Google Books API: {error}. Basic book record created."
+    
+    logger.warning(f"Using fallback metadata for ISBN {isbn}: {error}")
+    return fallback_metadata, True, warning_message

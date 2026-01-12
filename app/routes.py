@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, request, jsonify, redirect, url_for, flash
-from app.services.book_service import process_and_store_book, get_all_books, get_book_by_id
+from app.services.book_service import process_and_store_book_with_retry_option, get_all_books, get_book_by_id
 
 # Create blueprint for main routes
 main = Blueprint('main', __name__)
@@ -18,7 +18,7 @@ def health():
 @main.route('/add-book', methods=['POST'])
 def add_book():
     """
-    Handle ISBN form submission with htmx support.
+    Handle ISBN form submission with htmx support and graceful error handling.
     Returns HTML fragment for htmx or redirects for progressive enhancement.
     """
     isbn = request.form.get('isbn', '').strip()
@@ -33,27 +33,48 @@ def add_book():
             flash(error_message, 'error')
             return redirect(url_for('main.index'))
     
-    # Process the book
-    book, error = process_and_store_book(isbn)
+    # Process the book with fallback handling
+    book, error_or_warning, should_retry_later = process_and_store_book_with_retry_option(isbn)
     
-    if error:
+    if not book:
+        # Complete failure - no book was created
         if request.headers.get('HX-Request'):
             # htmx request - return error fragment
-            return render_template('fragments/error_message.html', error=error), 400
+            return render_template('fragments/error_message.html', 
+                                 error=error_or_warning, 
+                                 show_retry=should_retry_later), 400
         else:
             # Progressive enhancement - flash message and redirect
-            flash(error, 'error')
+            flash(error_or_warning, 'error')
             return redirect(url_for('main.index'))
     
-    # Success case
-    if request.headers.get('HX-Request'):
-        # htmx request - return updated book collection fragment
-        books = get_all_books()
-        return render_template('fragments/book_collection.html', books=books)
+    # Success case (book was created, but might have warning about fallback data)
+    if error_or_warning:
+        # Book created with fallback data - show warning
+        warning_message = f'Book added successfully, but with limited information: {error_or_warning}'
+        if should_retry_later:
+            warning_message += ' You can try refreshing the book information later when the service is available.'
+        
+        if request.headers.get('HX-Request'):
+            # htmx request - return updated collection with warning
+            books = get_all_books()
+            return render_template('fragments/book_collection.html', 
+                                 books=books, 
+                                 warning=warning_message)
+        else:
+            # Progressive enhancement - flash warning and redirect
+            flash(warning_message, 'warning')
+            return redirect(url_for('main.index'))
     else:
-        # Progressive enhancement - flash success and redirect
-        flash(f'Successfully added "{book.title}" to your collection!', 'success')
-        return redirect(url_for('main.index'))
+        # Complete success
+        if request.headers.get('HX-Request'):
+            # htmx request - return updated book collection fragment
+            books = get_all_books()
+            return render_template('fragments/book_collection.html', books=books)
+        else:
+            # Progressive enhancement - flash success and redirect
+            flash(f'Successfully added "{book.title}" to your collection!', 'success')
+            return redirect(url_for('main.index'))
 
 @main.route('/books')
 def book_collection():
@@ -90,3 +111,40 @@ def book_detail(book_id):
     else:
         # Regular request - return full page
         return render_template('book_detail.html', book=book)
+
+@main.route('/refresh-book/<int:book_id>', methods=['POST'])
+def refresh_book(book_id):
+    """
+    Refresh book metadata from Google Books API.
+    """
+    from app.services.book_service import refresh_book_from_api
+    
+    book, error_or_warning, is_fallback = refresh_book_from_api(book_id)
+    
+    if not book:
+        # Refresh failed
+        if request.headers.get('HX-Request'):
+            return render_template('fragments/error_message.html', 
+                                 error=error_or_warning), 400
+        else:
+            flash(error_or_warning, 'error')
+            return redirect(url_for('main.book_detail', book_id=book_id))
+    
+    # Refresh succeeded
+    if is_fallback and error_or_warning:
+        # Refreshed with fallback data
+        warning_message = f'Book information refreshed with limited data: {error_or_warning}'
+        if request.headers.get('HX-Request'):
+            return render_template('fragments/book_detail.html', 
+                                 book=book, 
+                                 warning=warning_message)
+        else:
+            flash(warning_message, 'warning')
+            return redirect(url_for('main.book_detail', book_id=book_id))
+    else:
+        # Complete success
+        if request.headers.get('HX-Request'):
+            return render_template('fragments/book_detail.html', book=book)
+        else:
+            flash('Book information refreshed successfully!', 'success')
+            return redirect(url_for('main.book_detail', book_id=book_id))

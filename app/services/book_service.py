@@ -2,7 +2,8 @@
 Book service for processing and storing book data.
 
 This module provides functions for processing Google Books API responses,
-creating book records, and managing book data storage.
+creating book records, and managing book data storage with graceful
+handling of external service failures.
 """
 
 import logging
@@ -10,7 +11,7 @@ from typing import Optional, Dict, Any, Tuple, List
 from datetime import date
 from app import db
 from app.models.book import Book
-from app.services.google_books_api import get_book_metadata_by_isbn
+from app.services.google_books_api import get_book_metadata_with_fallback
 from app.services.isbn_service import validate_isbn, is_duplicate_isbn
 
 # Configure logging
@@ -19,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 def process_and_store_book(isbn: str) -> Tuple[Optional[Book], Optional[str]]:
     """
-    Process ISBN, fetch book data from API, and store in database.
+    Process ISBN, fetch book data from API, and store in database with fallback handling.
     
     Args:
         isbn: Raw ISBN string
@@ -44,18 +45,69 @@ def process_and_store_book(isbn: str) -> Tuple[Optional[Book], Optional[str]]:
     if is_duplicate:
         return None, f"Book with ISBN {normalized_isbn} already exists in your collection"
     
-    # Step 3: Fetch book metadata from Google Books API
-    metadata, api_error = get_book_metadata_by_isbn(normalized_isbn)
-    if api_error:
-        return None, f"Failed to retrieve book information: {api_error}"
+    # Step 3: Fetch book metadata from Google Books API with fallback
+    metadata, is_fallback, warning_message = get_book_metadata_with_fallback(normalized_isbn)
     
     # Step 4: Process and store book data
     book, storage_error = create_book_from_metadata(normalized_isbn, metadata)
     if storage_error:
         return None, storage_error
     
-    logger.info(f"Successfully processed and stored book: {book.title} (ISBN: {normalized_isbn})")
+    # Log success with appropriate message
+    if is_fallback:
+        logger.warning(f"Stored book with fallback data: {book.title} (ISBN: {normalized_isbn}) - {warning_message}")
+    else:
+        logger.info(f"Successfully processed and stored book: {book.title} (ISBN: {normalized_isbn})")
+    
     return book, None
+
+
+def process_and_store_book_with_retry_option(isbn: str) -> Tuple[Optional[Book], Optional[str], bool]:
+    """
+    Process ISBN with fallback handling and return retry recommendation.
+    
+    Args:
+        isbn: Raw ISBN string
+        
+    Returns:
+        Tuple of (book_object, error_message, should_retry_later)
+        - book_object: Book if successful, None if failed
+        - error_message: Error message if failed, None if successful
+        - should_retry_later: True if user should try again later for better data
+    """
+    if not isbn:
+        return None, "ISBN cannot be empty", False
+    
+    # Step 1: Validate and normalize ISBN
+    is_valid, normalized_isbn, validation_error = validate_isbn(isbn)
+    if not is_valid:
+        return None, validation_error, False
+    
+    # Step 2: Check for duplicates
+    is_duplicate, _, duplicate_error = is_duplicate_isbn(isbn)
+    if duplicate_error:
+        return None, duplicate_error, False
+    if is_duplicate:
+        return None, f"Book with ISBN {normalized_isbn} already exists in your collection", False
+    
+    # Step 3: Fetch book metadata from Google Books API with fallback
+    metadata, is_fallback, warning_message = get_book_metadata_with_fallback(normalized_isbn)
+    
+    # Step 4: Process and store book data
+    book, storage_error = create_book_from_metadata(normalized_isbn, metadata)
+    if storage_error:
+        return None, storage_error, False
+    
+    # Determine if user should retry later
+    should_retry_later = is_fallback and "unavailable" in (warning_message or "").lower()
+    
+    # Log success with appropriate message
+    if is_fallback:
+        logger.warning(f"Stored book with fallback data: {book.title} (ISBN: {normalized_isbn}) - {warning_message}")
+    else:
+        logger.info(f"Successfully processed and stored book: {book.title} (ISBN: {normalized_isbn})")
+    
+    return book, warning_message if is_fallback else None, should_retry_later
 
 
 def create_book_from_metadata(isbn: str, metadata: Dict[str, Any]) -> Tuple[Optional[Book], Optional[str]]:
@@ -113,16 +165,25 @@ def create_book_from_metadata(isbn: str, metadata: Dict[str, Any]) -> Tuple[Opti
             cover_image_url=cover_image_url
         )
         
-        # Save to database
-        db.session.add(book)
-        db.session.commit()
+        # Save to database with error handling
+        try:
+            db.session.add(book)
+            db.session.commit()
+        except Exception as db_error:
+            db.session.rollback()
+            error_msg = f"Database error while saving book: {str(db_error)}"
+            logger.error(error_msg)
+            return None, error_msg
         
         logger.info(f"Successfully created book record: {title} by {', '.join(authors)}")
         return book, None
         
     except Exception as e:
         # Rollback transaction on error
-        db.session.rollback()
+        try:
+            db.session.rollback()
+        except Exception:
+            pass  # Ignore rollback errors
         error_msg = f"Failed to create book record: {str(e)}"
         logger.error(error_msg)
         return None, error_msg
@@ -130,7 +191,7 @@ def create_book_from_metadata(isbn: str, metadata: Dict[str, Any]) -> Tuple[Opti
 
 def get_all_books() -> List[Book]:
     """
-    Retrieve all books from the database.
+    Retrieve all books from the database with error handling.
     
     Returns:
         List of Book objects ordered by creation date (newest first)
@@ -146,7 +207,7 @@ def get_all_books() -> List[Book]:
 
 def get_book_by_id(book_id: int) -> Optional[Book]:
     """
-    Retrieve a specific book by ID.
+    Retrieve a specific book by ID with error handling.
     
     Args:
         book_id: Book ID
@@ -154,6 +215,10 @@ def get_book_by_id(book_id: int) -> Optional[Book]:
     Returns:
         Book object or None if not found
     """
+    if not book_id or book_id <= 0:
+        logger.warning(f"Invalid book ID: {book_id}")
+        return None
+    
     try:
         book = Book.query.get(book_id)
         if book:
@@ -168,7 +233,7 @@ def get_book_by_id(book_id: int) -> Optional[Book]:
 
 def get_book_by_isbn(isbn: str) -> Optional[Book]:
     """
-    Retrieve a specific book by ISBN.
+    Retrieve a specific book by ISBN with error handling.
     
     Args:
         isbn: ISBN string (will be normalized)
@@ -198,7 +263,7 @@ def get_book_by_isbn(isbn: str) -> Optional[Book]:
 
 def update_book_metadata(book_id: int, metadata: Dict[str, Any]) -> Tuple[Optional[Book], Optional[str]]:
     """
-    Update book metadata (useful for refreshing data from API).
+    Update book metadata (useful for refreshing data from API) with error handling.
     
     Args:
         book_id: Book ID to update
@@ -209,6 +274,9 @@ def update_book_metadata(book_id: int, metadata: Dict[str, Any]) -> Tuple[Option
         If successful: (Book, None)
         If failed: (None, error_message)
     """
+    if not book_id or book_id <= 0:
+        return None, "Invalid book ID"
+    
     try:
         book = Book.query.get(book_id)
         if not book:
@@ -236,14 +304,60 @@ def update_book_metadata(book_id: int, metadata: Dict[str, Any]) -> Tuple[Option
         if 'cover_image_url' in metadata:
             book.cover_image_url = metadata['cover_image_url']
         
-        # Save changes
-        db.session.commit()
+        # Save changes with error handling
+        try:
+            db.session.commit()
+        except Exception as db_error:
+            db.session.rollback()
+            error_msg = f"Database error while updating book: {str(db_error)}"
+            logger.error(error_msg)
+            return None, error_msg
         
         logger.info(f"Successfully updated book: {book.title}")
         return book, None
         
     except Exception as e:
-        db.session.rollback()
+        try:
+            db.session.rollback()
+        except Exception:
+            pass  # Ignore rollback errors
         error_msg = f"Failed to update book: {str(e)}"
         logger.error(error_msg)
         return None, error_msg
+
+
+def refresh_book_from_api(book_id: int) -> Tuple[Optional[Book], Optional[str], bool]:
+    """
+    Refresh book metadata from Google Books API with fallback handling.
+    
+    Args:
+        book_id: Book ID to refresh
+        
+    Returns:
+        Tuple of (updated_book, error_message, is_fallback_data)
+        If successful: (Book, None, False)
+        If failed: (None, error_message, False)
+        If fallback used: (Book, warning_message, True)
+    """
+    if not book_id or book_id <= 0:
+        return None, "Invalid book ID", False
+    
+    try:
+        book = Book.query.get(book_id)
+        if not book:
+            return None, f"Book with ID {book_id} not found", False
+        
+        # Get fresh metadata from API
+        metadata, is_fallback, warning_message = get_book_metadata_with_fallback(book.isbn)
+        
+        # Update book with new metadata
+        updated_book, update_error = update_book_metadata(book_id, metadata)
+        if update_error:
+            return None, update_error, False
+        
+        return updated_book, warning_message if is_fallback else None, is_fallback
+        
+    except Exception as e:
+        error_msg = f"Failed to refresh book from API: {str(e)}"
+        logger.error(error_msg)
+        return None, error_msg, False

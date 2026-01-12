@@ -64,8 +64,8 @@ class TestProcessAndStoreBook:
         """Test successful book processing and storage."""
         with app.app_context():
             # Mock the Google Books API call
-            mock_api = mocker.patch('app.services.book_service.get_book_metadata_by_isbn')
-            mock_api.return_value = (sample_book_metadata, None)
+            mock_api = mocker.patch('app.services.book_service.get_book_metadata_with_fallback')
+            mock_api.return_value = (sample_book_metadata, False, None)
             
             # Process and store book
             book, error = process_and_store_book('9780743273565')
@@ -112,20 +112,30 @@ class TestProcessAndStoreBook:
     def test_process_and_store_book_api_error(self, app, mocker):
         """Test processing when API returns error."""
         with app.app_context():
-            # Mock API to return error
-            mock_api = mocker.patch('app.services.book_service.get_book_metadata_by_isbn')
-            mock_api.return_value = (None, 'API connection failed')
+            # Mock API to return fallback data with error
+            fallback_metadata = {
+                'title': 'Book with ISBN 9780743273565',
+                'authors': [],
+                'publisher': None,
+                'published_date': None,
+                'description': 'Book information could not be retrieved from Google Books API. You can edit this information later.',
+                'thumbnail_url': None,
+                'cover_image_url': None,
+            }
+            mock_api = mocker.patch('app.services.book_service.get_book_metadata_with_fallback')
+            mock_api.return_value = (fallback_metadata, True, 'API connection failed')
             
             book, error = process_and_store_book('9780743273565')
-            assert book is None
-            assert 'Failed to retrieve book information' in error
+            # With fallback, book should be created but with warning
+            assert book is not None
+            assert error is None  # No error, just fallback data used
     
     def test_process_and_store_book_storage_error(self, app, mocker):
         """Test processing when storage fails."""
         with app.app_context():
             # Mock API to return valid data
-            mock_api = mocker.patch('app.services.book_service.get_book_metadata_by_isbn')
-            mock_api.return_value = ({'title': 'Test Book'}, None)
+            mock_api = mocker.patch('app.services.book_service.get_book_metadata_with_fallback')
+            mock_api.return_value = ({'title': 'Test Book'}, False, None)
             
             # Mock database commit to raise exception
             mock_commit = mocker.patch.object(db.session, 'commit')
@@ -133,7 +143,7 @@ class TestProcessAndStoreBook:
             
             book, error = process_and_store_book('9780743273565')
             assert book is None
-            assert 'Failed to create book record' in error
+            assert 'Database error while saving book' in error
 
 
 class TestCreateBookFromMetadata:
@@ -207,7 +217,7 @@ class TestCreateBookFromMetadata:
             book, error = create_book_from_metadata('9780743273565', sample_book_metadata)
             
             assert book is None
-            assert 'Failed to create book record' in error
+            assert 'Database error while saving book' in error
 
 
 class TestBookRetrieval:
@@ -369,7 +379,7 @@ class TestBookUpdate:
             updated_book, error = update_book_metadata(book_id, {'title': 'New Title'})
             
             assert updated_book is None
-            assert 'Failed to update book' in error
+            assert 'Database error while updating book' in error
 
 
 class TestIntegrationScenarios:
@@ -379,8 +389,8 @@ class TestIntegrationScenarios:
         """Test complete book lifecycle: add, retrieve, update."""
         with app.app_context():
             # Mock API for adding book
-            mock_api = mocker.patch('app.services.book_service.get_book_metadata_by_isbn')
-            mock_api.return_value = (sample_book_metadata, None)
+            mock_api = mocker.patch('app.services.book_service.get_book_metadata_with_fallback')
+            mock_api.return_value = (sample_book_metadata, False, None)
             
             # 1. Add book
             book, error = process_and_store_book('9780743273565')
@@ -408,14 +418,14 @@ class TestIntegrationScenarios:
         """Test managing multiple books."""
         with app.app_context():
             # Mock API for different books
-            mock_api = mocker.patch('app.services.book_service.get_book_metadata_by_isbn')
+            mock_api = mocker.patch('app.services.book_service.get_book_metadata_with_fallback')
             
             # Add first book
-            mock_api.return_value = ({'title': 'Book 1', 'authors': ['Author 1']}, None)
+            mock_api.return_value = ({'title': 'Book 1', 'authors': ['Author 1']}, False, None)
             book1, _ = process_and_store_book('9780743273565')
             
             # Add second book
-            mock_api.return_value = ({'title': 'Book 2', 'authors': ['Author 2']}, None)
+            mock_api.return_value = ({'title': 'Book 2', 'authors': ['Author 2']}, False, None)
             book2, _ = process_and_store_book('9780439420891')
             
             # Retrieve all books

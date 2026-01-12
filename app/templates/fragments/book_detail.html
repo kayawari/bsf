@@ -1,4 +1,13 @@
 <!-- Book detail fragment for htmx responses -->
+{% if warning %}
+<div class="warning-message" role="alert" aria-live="polite">
+    <div class="warning-icon">⚠️</div>
+    <div class="warning-content">
+        <p class="warning-text">{{ warning }}</p>
+    </div>
+</div>
+{% endif %}
+
 <div class="book-detail">
     <div class="book-detail-header">
         <button class="back-button" 
@@ -6,6 +15,15 @@
                 hx-target="#main-content"
                 hx-push-url="true">
             ← Back to Collection
+        </button>
+        
+        <button class="refresh-button"
+                hx-post="{{ url_for('main.refresh_book', book_id=book.id) }}"
+                hx-target="#main-content"
+                hx-indicator="#refresh-indicator"
+                title="Refresh book information from Google Books API">
+            <span id="refresh-indicator" class="htmx-indicator">🔄</span>
+            Refresh Info
         </button>
     </div>
     
@@ -45,7 +63,130 @@
                     <h3>Description</h3>
                     <p>{{ book.description }}</p>
                 </div>
+            {% else %}
+                <div class="detail-description">
+                    <h3>Description</h3>
+                    <p class="no-description">No description available. Try refreshing the book information.</p>
+                </div>
             {% endif %}
         </div>
     </div>
 </div>
+
+<style>
+.warning-message {
+    background-color: #fff3cd;
+    border: 1px solid #ffeaa7;
+    border-radius: 4px;
+    color: #856404;
+    padding: 1rem;
+    margin: 1rem 0;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    animation: slideIn 0.3s ease-out;
+}
+
+.warning-icon {
+    font-size: 1.25rem;
+    flex-shrink: 0;
+    margin-top: 0.125rem;
+}
+
+.warning-content {
+    flex: 1;
+}
+
+.warning-text {
+    margin: 0;
+    font-weight: 500;
+    line-height: 1.4;
+}
+
+.book-detail-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.refresh-button {
+    background-color: #28a745;
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: background-color 0.2s ease;
+}
+
+.refresh-button:hover {
+    background-color: #218838;
+}
+
+.refresh-button:disabled {
+    background-color: #6c757d;
+    cursor: not-allowed;
+}
+
+#refresh-indicator {
+    display: none;
+    animation: spin 1s linear infinite;
+}
+
+.htmx-request #refresh-indicator {
+    display: inline;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.no-description {
+    font-style: italic;
+    color: #666;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .book-detail-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .refresh-button {
+        justify-content: center;
+    }
+    
+    .warning-message {
+        padding: 0.75rem;
+        margin: 0.75rem 0;
+    }
+    
+    .warning-icon {
+        font-size: 1rem;
+    }
+    
+    .warning-text {
+        font-size: 0.9rem;
+    }
+}
+</style>
