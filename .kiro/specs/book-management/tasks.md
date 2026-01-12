@@ -25,7 +25,7 @@ This implementation plan converts the book management design into discrete codin
     - Set up database schema with proper constraints and indexes
     - _Requirements: 1.3, 7.2_
 
-  - [ ]* 2.2 Write property test for Book model
+  - [x] 2.2 Write property test for Book model
     - **Property 3: Data Persistence**
     - **Validates: Requirements 1.3**
 
@@ -39,7 +39,7 @@ This implementation plan converts the book management design into discrete codin
     - Create ISBN normalization function to convert ISBN-10 to ISBN-13
     - _Requirements: 1.1, 1.2, 1.4_
 
-  - [ ]* 3.2 Write property tests for ISBN validation
+  - [x] 3.2 Write property tests for ISBN validation
     - **Property 1: ISBN Validation and Format Support**
     - **Property 2: Invalid ISBN Rejection**
     - **Validates: Requirements 1.1, 1.2, 1.4**
@@ -48,7 +48,7 @@ This implementation plan converts the book management design into discrete codin
     - Create function to check if ISBN already exists in database
     - _Requirements: 1.5_
 
-  - [ ]* 3.4 Write property test for duplicate prevention
+  - [x] 3.4 Write property test for duplicate prevention
     - **Property 4: Duplicate Prevention**
     - **Validates: Requirements 1.5**
 
