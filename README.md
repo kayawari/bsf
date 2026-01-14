@@ -28,6 +28,8 @@ A web application for managing purchased books by manually inputting ISBN number
    ```
 
 4. **Run the application:**
+
+   **Development Server:**
    ```bash
    python run.py
    ```
@@ -37,6 +39,16 @@ A web application for managing purchased books by manually inputting ISBN number
    You can also specify a custom port:
    ```bash
    PORT=5000 python run.py
+   ```
+
+   **Production Server (Gunicorn):**
+   ```bash
+   gunicorn run:app
+   ```
+
+   To specify workers and port:
+   ```bash
+   gunicorn --workers 4 --bind 0.0.0.0:8000 run:app
    ```
    
    **Port Conflicts:** If you encounter port conflicts, you can check what's using a port:
