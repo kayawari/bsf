@@ -11,14 +11,14 @@
 <div class="book-detail">
     <div class="book-detail-header">
         <button class="back-button" 
-                hx-get="{{ url_for('main.index') }}"
+                hx-get="{{ url_for('book.index') }}"
                 hx-target="#main-content"
                 hx-push-url="true">
             ← Back to Collection
         </button>
         
         <button class="refresh-button"
-                hx-post="{{ url_for('main.refresh_book', book_id=book.id) }}"
+                hx-post="{{ url_for('book.refresh_book', book_id=book.id) }}"
                 hx-target="#main-content"
                 hx-indicator="#refresh-indicator"
                 title="Refresh book information from Google Books API">

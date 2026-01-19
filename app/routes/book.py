@@ -1,29 +1,26 @@
+"""
+Book management routes blueprint.
+"""
+
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from app.services.book_service import (
     process_and_store_book_with_retry_option,
     get_all_books,
     get_book_by_id,
 )
-from app.services.barcode_service import process_scanned_barcode
 
-# Create blueprint for main routes
-main = Blueprint("main", __name__)
+# Create blueprint for book routes
+book_bp = Blueprint("book", __name__)
 
 
-@main.route("/")
+@book_bp.route("/")
 def index():
     """Home page route with book collection display."""
     books = get_all_books()
     return render_template("index.html", books=books)
 
 
-@main.route("/health")
-def health():
-    """Health check endpoint."""
-    return {"status": "ok", "message": "Book Management Application is running"}
-
-
-@main.route("/add-book", methods=["POST"])
+@book_bp.route("/add-book", methods=["POST"])
 def add_book():
     """
     Handle ISBN form submission with htmx support and graceful error handling.
@@ -41,7 +38,7 @@ def add_book():
         else:
             # Progressive enhancement - flash message and redirect
             flash(error_message, "error")
-            return redirect(url_for("main.index"))
+            return redirect(url_for("book.index"))
 
     # Process the book with fallback handling
     book, error_or_warning, should_retry_later = (
@@ -60,7 +57,7 @@ def add_book():
         else:
             # Progressive enhancement - flash message and redirect
             flash(error_or_warning, "error")
-            return redirect(url_for("main.index"))
+            return redirect(url_for("book.index"))
 
     # Success case (book was created, but might have warning about fallback data)
     if error_or_warning:
@@ -80,7 +77,7 @@ def add_book():
         else:
             # Progressive enhancement - flash warning and redirect
             flash(warning_message, "warning")
-            return redirect(url_for("main.index"))
+            return redirect(url_for("book.index"))
     else:
         # Complete success
         if request.headers.get("HX-Request"):
@@ -90,10 +87,10 @@ def add_book():
         else:
             # Progressive enhancement - flash success and redirect
             flash(f'Successfully added "{book.title}" to your collection!', "success")
-            return redirect(url_for("main.index"))
+            return redirect(url_for("book.index"))
 
 
-@main.route("/books")
+@book_bp.route("/books")
 def book_collection():
     """
     Display book collection with htmx fragment support.
@@ -108,7 +105,7 @@ def book_collection():
         return render_template("collection.html", books=books)
 
 
-@main.route("/book/<int:book_id>")
+@book_bp.route("/book/<int:book_id>")
 def book_detail(book_id):
     """
     Display detailed view of a specific book with htmx navigation support.
@@ -122,7 +119,7 @@ def book_detail(book_id):
             ), 404
         else:
             flash("Book not found", "error")
-            return redirect(url_for("main.index"))
+            return redirect(url_for("book.index"))
 
     if request.headers.get("HX-Request"):
         # htmx request - return book detail fragment
@@ -132,7 +129,7 @@ def book_detail(book_id):
         return render_template("book_detail.html", book=book)
 
 
-@main.route("/refresh-book/<int:book_id>", methods=["POST"])
+@book_bp.route("/refresh-book/<int:book_id>", methods=["POST"])
 def refresh_book(book_id):
     """
     Refresh book metadata from Google Books API.
@@ -149,7 +146,7 @@ def refresh_book(book_id):
             ), 400
         else:
             flash(error_or_warning, "error")
-            return redirect(url_for("main.book_detail", book_id=book_id))
+            return redirect(url_for("book.book_detail", book_id=book_id))
 
     # Refresh succeeded
     if is_fallback and error_or_warning:
@@ -163,103 +160,11 @@ def refresh_book(book_id):
             )
         else:
             flash(warning_message, "warning")
-            return redirect(url_for("main.book_detail", book_id=book_id))
+            return redirect(url_for("book.book_detail", book_id=book_id))
     else:
         # Complete success
         if request.headers.get("HX-Request"):
             return render_template("fragments/book_detail.html", book=book)
         else:
             flash("Book information refreshed successfully!", "success")
-            return redirect(url_for("main.book_detail", book_id=book_id))
-
-
-@main.route("/scan")
-def barcode_scanner():
-    """Display barcode scanning interface."""
-    if request.headers.get("HX-Request"):
-        # htmx request - return scanner fragment
-        return render_template("fragments/barcode_scanner.html")
-    else:
-        # Regular request - return full scanner page
-        return render_template("barcode_scanner.html")
-
-
-@main.route("/scan/process", methods=["POST"])
-def process_barcode_scan():
-    """Process scanned barcode and return book information."""
-    scanned_text = request.form.get("scanned_text", "").strip()
-    scan_type = request.form.get("scan_type", "camera")  # 'camera' or 'file'
-    
-    # Process the scanned barcode
-    book, error_or_warning, should_retry_later = process_scanned_barcode(
-        scanned_text, scan_type
-    )
-    
-    if not book:
-        # Processing failed
-        if request.headers.get("HX-Request"):
-            return render_template(
-                "fragments/error_message.html",
-                error=error_or_warning,
-                show_retry=should_retry_later,
-            ), 400
-        else:
-            flash(error_or_warning, "error")
-            return redirect(url_for("main.barcode_scanner"))
-    
-    # Success - show book confirmation
-    if request.headers.get("HX-Request"):
-        return render_template(
-            "fragments/scanned_book_confirmation.html",
-            book=book,
-            warning=error_or_warning,
-            scanned_isbn=scanned_text
-        )
-    else:
-        # Progressive enhancement fallback - redirect to book detail
-        if error_or_warning:
-            flash(f"Book found with limited information: {error_or_warning}", "warning")
-        else:
-            flash(f'Found book: "{book.title}"', "success")
-        return redirect(url_for("main.book_detail", book_id=book.id))
-
-
-@main.route("/scan/save", methods=["POST"])
-def save_scanned_book():
-    """Save confirmed book to database (book already exists from processing)."""
-    book_id = request.form.get("book_id")
-    
-    if not book_id:
-        error_message = "No book ID provided"
-        if request.headers.get("HX-Request"):
-            return render_template(
-                "fragments/error_message.html", error=error_message
-            ), 400
-        else:
-            flash(error_message, "error")
-            return redirect(url_for("main.barcode_scanner"))
-    
-    # Get the book to confirm it exists
-    book = get_book_by_id(int(book_id))
-    if not book:
-        error_message = "Book not found"
-        if request.headers.get("HX-Request"):
-            return render_template(
-                "fragments/error_message.html", error=error_message
-            ), 404
-        else:
-            flash(error_message, "error")
-            return redirect(url_for("main.barcode_scanner"))
-    
-    # Book is already saved, just provide success feedback and return to scanner
-    success_message = f'Successfully added "{book.title}" to your collection!'
-    
-    if request.headers.get("HX-Request"):
-        # Return scanner interface with success message
-        return render_template(
-            "fragments/barcode_scanner.html",
-            success=success_message
-        )
-    else:
-        flash(success_message, "success")
-        return redirect(url_for("main.barcode_scanner"))
+            return redirect(url_for("book.book_detail", book_id=book_id))

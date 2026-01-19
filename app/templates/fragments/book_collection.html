@@ -24,8 +24,8 @@
             </div>
             <div class="book-info">
                 <h3 class="book-title">
-                    <a href="{{ url_for('main.book_detail', book_id=book.id) }}" 
-                       hx-get="{{ url_for('main.book_detail', book_id=book.id) }}"
+                    <a href="{{ url_for('book.book_detail', book_id=book.id) }}" 
+                       hx-get="{{ url_for('book.book_detail', book_id=book.id) }}"
                        hx-target="#main-content"
                        hx-push-url="true">
                         {{ book.title or 'Unknown Title' }}
