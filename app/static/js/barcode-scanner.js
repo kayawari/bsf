@@ -161,7 +161,7 @@ class BarcodeScanner {
     }
 
     /**
-     * Handle file selection for file-based scanning
+     * Handle file selection for file-based scanning with enhanced validation
      */
     async handleFileSelect(event) {
         const file = event.target.files[0];
@@ -169,17 +169,19 @@ class BarcodeScanner {
             return;
         }
 
-        // Validate file type
-        const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
-        if (!validTypes.includes(file.type)) {
-            this.showError('Please select a valid image file (JPEG, PNG, or WebP)');
-            return;
-        }
-
-        // Validate file size (max 10MB)
-        const maxSize = 10 * 1024 * 1024; // 10MB
-        if (file.size > maxSize) {
-            this.showError('File size too large. Please select an image smaller than 10MB.');
+        // Enhanced file validation
+        const validationResult = this.validateFile(file);
+        if (!validationResult.valid) {
+            this.sendErrorToServer(
+                validationResult.errorType,
+                validationResult.message,
+                'low',
+                {
+                    show_retry: true,
+                    show_manual_entry: true,
+                    show_file_fallback: false
+                }
+            );
             return;
         }
 
@@ -192,12 +194,49 @@ class BarcodeScanner {
             
         } catch (error) {
             console.error('File scan error:', error);
-            this.showError('Could not detect a barcode in this image. Please try a clearer image or use the camera.');
+            this.sendErrorToServer(
+                'barcode_detection_error',
+                'Could not detect a barcode in this image.',
+                'low',
+                {
+                    show_retry: true,
+                    show_file_fallback: false,
+                    show_manual_entry: true
+                }
+            );
         }
     }
 
     /**
-     * Send scanned barcode to server
+     * Validate file for scanning with detailed error categorization
+     */
+    validateFile(file) {
+        // Check file type
+        const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+        if (!validTypes.includes(file.type)) {
+            return {
+                valid: false,
+                errorType: 'file_format_error',
+                message: 'Please select a valid image file (JPEG, PNG, or WebP).'
+            };
+        }
+
+        // Check file size (max 10MB)
+        const maxSize = 10 * 1024 * 1024; // 10MB
+        if (file.size > maxSize) {
+            const sizeMB = Math.round(file.size / (1024 * 1024));
+            return {
+                valid: false,
+                errorType: 'file_size_error',
+                message: `File size too large (${sizeMB}MB). Please select an image smaller than 10MB.`
+            };
+        }
+
+        return { valid: true };
+    }
+
+    /**
+     * Send scanned barcode to server with enhanced error handling
      */
     sendToServer(scannedText, scanType) {
         // Use htmx to send the data to the server
@@ -213,33 +252,145 @@ class BarcodeScanner {
         }).catch((error) => {
             console.error('Server communication error:', error);
             this.hideLoading();
-            this.showError('Failed to process barcode. Please try again.');
+            
+            // Determine if this is a network error
+            const isNetworkError = !navigator.onLine || 
+                                 error.message.includes('NetworkError') ||
+                                 error.message.includes('Failed to fetch');
+            
+            if (isNetworkError) {
+                this.sendErrorToServer(
+                    'network_error',
+                    'Unable to connect to the book information service. Please check your internet connection.',
+                    'medium',
+                    {
+                        show_retry: true,
+                        show_manual_entry: true,
+                        show_file_fallback: false
+                    }
+                );
+            } else {
+                this.sendErrorToServer(
+                    'unknown_error',
+                    'Failed to process barcode. Please try again.',
+                    'medium',
+                    {
+                        show_retry: true,
+                        show_manual_entry: true,
+                        show_file_fallback: true
+                    }
+                );
+            }
         });
     }
 
     /**
-     * Handle camera permission and initialization errors
+     * Handle camera permission and initialization errors with enhanced error categorization
      */
     handleCameraError(error) {
         this.hideLoading();
         
+        let errorType = 'camera_error';
         let errorMessage = 'Camera access failed. ';
         let showFileOption = true;
+        let severity = 'medium';
 
+        // Categorize the error for better handling
         if (error.name === 'NotAllowedError' || error.message.includes('Permission denied')) {
-            errorMessage += 'Please allow camera access and try again, or use the file upload option below.';
+            errorType = 'camera_permission_error';
+            errorMessage = 'Camera access is required to scan barcodes. Please allow camera access and try again.';
+            severity = 'medium';
         } else if (error.name === 'NotFoundError' || error.message.includes('No cameras found')) {
-            errorMessage += 'No camera found on this device. Please use the file upload option below.';
+            errorType = 'camera_not_found_error';
+            errorMessage = 'No camera was found on this device.';
+            severity = 'medium';
         } else if (error.name === 'NotSupportedError') {
-            errorMessage += 'Camera not supported in this browser. Please use the file upload option below.';
+            errorType = 'camera_not_supported_error';
+            errorMessage = 'Camera scanning is not supported in this browser.';
+            severity = 'medium';
         } else if (error.message.includes('HTTPS')) {
-            errorMessage += 'Camera access requires a secure connection (HTTPS). Please use the file upload option below.';
+            errorType = 'camera_not_supported_error';
+            errorMessage = 'Camera access requires a secure connection (HTTPS).';
+            severity = 'high';
         } else {
-            errorMessage += 'Please try the file upload option below or enter the ISBN manually.';
+            errorType = 'unknown_error';
+            errorMessage = 'An unexpected camera error occurred.';
+            severity = 'high';
         }
 
-        this.showError(errorMessage, showFileOption);
+        // Send structured error to server for consistent handling
+        this.sendErrorToServer(errorType, errorMessage, severity, {
+            show_file_fallback: showFileOption,
+            show_manual_entry: true,
+            show_retry: errorType !== 'camera_not_found_error'
+        });
+
         this.updateUI('error');
+    }
+
+    /**
+     * Send structured error information to server for consistent error handling
+     */
+    sendErrorToServer(errorType, errorMessage, severity = 'medium', options = {}) {
+        const errorData = {
+            error_type: errorType,
+            error_message: errorMessage,
+            severity: severity,
+            suggested_action: this.getSuggestedAction(errorType),
+            ...options
+        };
+
+        // Use htmx to render the enhanced error message
+        htmx.ajax('POST', '/scan/process', {
+            values: { 
+                scanned_text: '', 
+                scan_type: 'camera',
+                error_data: JSON.stringify(errorData)
+            },
+            target: '#scan-result-container',
+            swap: 'innerHTML'
+        }).catch((error) => {
+            console.error('Failed to send error to server:', error);
+            // Fallback to local error display
+            this.showLocalError(errorMessage, options);
+        });
+    }
+
+    /**
+     * Get suggested action for error type
+     */
+    getSuggestedAction(errorType) {
+        const actions = {
+            'camera_permission_error': 'Allow camera access in your browser settings, or use the file upload option.',
+            'camera_not_found_error': 'Use the file upload option to scan an image of the barcode.',
+            'camera_not_supported_error': 'Use the file upload option or enter the ISBN manually.',
+            'network_error': 'Check your internet connection and try again, or enter the ISBN manually.',
+            'barcode_detection_error': 'Ensure good lighting and hold the barcode steady, or try uploading a clearer image.',
+            'file_format_error': 'Select a JPEG, PNG, or WebP image file.',
+            'file_size_error': 'Reduce the image size or select a different image.',
+            'unknown_error': 'Please try again or contact support if the problem persists.'
+        };
+        
+        return actions[errorType] || 'Please try again or contact support.';
+    }
+
+    /**
+     * Show local error message as fallback
+     */
+    showLocalError(message, options = {}) {
+        const errorEl = document.getElementById('error-message');
+        const errorText = document.getElementById('error-text');
+        const fileOptionEl = document.getElementById('file-option');
+        
+        if (errorEl) {
+            errorEl.style.display = 'block';
+        }
+        if (errorText) {
+            errorText.textContent = message;
+        }
+        if (fileOptionEl) {
+            fileOptionEl.style.display = options.show_file_fallback ? 'block' : 'none';
+        }
     }
 
     /**

@@ -63,14 +63,15 @@ class TestBarcodeExtractionConsistencyProperties:
             check_digit = (10 - (checksum % 10)) % 10
             valid_isbn13 = isbn13_base + str(check_digit)
             
-            # Test validation consistency across different scan types
+            # Test validation consistency across different scan types (now returns 3 values)
             camera_result = validate_barcode_result(valid_isbn13)
             file_result = validate_barcode_result(valid_isbn13)
             
             # Both should return the same validation result
             assert camera_result == file_result, "Validation should be consistent regardless of scan method"
             assert camera_result[0] == True, "Valid ISBN should be accepted"
-            assert camera_result[1] is None, "Valid ISBN should not return error"
+            assert camera_result[1] == valid_isbn13, "Valid ISBN should return normalized ISBN"
+            assert camera_result[2] is None, "Valid ISBN should not return error"
             
             # Test with formatting variations (simulating different scan quality)
             formatted_variations = [
@@ -86,10 +87,13 @@ class TestBarcodeExtractionConsistencyProperties:
                 result = validate_barcode_result(variation)
                 validation_results.append(result)
             
-            # All variations should produce the same validation result
+            # All variations should produce the same validation result (normalized ISBN should be the same)
             first_result = validation_results[0]
-            for result in validation_results[1:]:
-                assert result == first_result, f"All formatting variations should validate consistently: {variation}"
+            for i, result in enumerate(validation_results[1:], 1):
+                assert result[0] == first_result[0], f"All formatting variations should have same validity: {formatted_variations[i]}"
+                assert result[1] == first_result[1], f"All formatting variations should normalize to same ISBN: {formatted_variations[i]}"
+                # Error status should be the same (None for valid ISBNs)
+                assert (result[2] is None) == (first_result[2] is None), f"All formatting variations should have same error status: {formatted_variations[i]}"
     
     @given(
         isbn10_digits=st.lists(st.integers(0, 9), min_size=9, max_size=9),
@@ -117,14 +121,15 @@ class TestBarcodeExtractionConsistencyProperties:
             # Create valid ISBN-10
             valid_isbn10 = isbn10_base + correct_check_char
             
-            # Test validation consistency
+            # Test validation consistency (now returns 3 values)
             result1 = validate_barcode_result(valid_isbn10)
             result2 = validate_barcode_result(valid_isbn10)
             
             # Results should be identical
             assert result1 == result2, "Validation should be deterministic"
             assert result1[0] == True, "Valid ISBN-10 should be accepted"
-            assert result1[1] is None, "Valid ISBN-10 should not return error"
+            assert result1[1] is not None, "Valid ISBN-10 should return normalized ISBN"
+            assert result1[2] is None, "Valid ISBN-10 should not return error"
             
             # Test with different formatting
             formatted_isbn10 = f"{valid_isbn10[:1]}-{valid_isbn10[1:6]}-{valid_isbn10[6:9]}-{valid_isbn10[9]}"
@@ -178,8 +183,8 @@ class TestServiceIntegrationConsistencyProperties:
                     mock_book.isbn = valid_isbn13
                     mock_book_service.return_value = (mock_book, None, False)
                     
-                    # Process the scanned barcode
-                    book, error, retry = process_scanned_barcode(valid_isbn13, scan_type)
+                    # Process the scanned barcode (now returns 4 values)
+                    book, error, retry, scan_error = process_scanned_barcode(valid_isbn13, scan_type)
                     
                     # Verify the existing book service was called
                     mock_book_service.assert_called_once_with(valid_isbn13)
@@ -188,6 +193,7 @@ class TestServiceIntegrationConsistencyProperties:
                     assert book is not None, "Should return book object from existing service"
                     assert error is None, "Should not return error for successful processing"
                     assert retry == False, "Should return retry flag from existing service"
+                    assert scan_error is None, "Should not return scan error for successful processing"
                     
                     # Verify the book object properties match the mock
                     assert book.title == "Test Book"
@@ -215,8 +221,8 @@ class TestServiceIntegrationConsistencyProperties:
         **Validates: Requirements 7.1, 7.2, 7.3**
         """
         with app.app_context():
-            # Process invalid ISBN
-            book, error, retry = process_scanned_barcode(invalid_isbn, scan_type)
+            # Process invalid ISBN (now returns 4 values)
+            book, error, retry, scan_error = process_scanned_barcode(invalid_isbn, scan_type)
             
             # Should return consistent error handling
             assert book is None, "Should not return book for invalid ISBN"
@@ -224,6 +230,8 @@ class TestServiceIntegrationConsistencyProperties:
             assert isinstance(error, str), "Error should be a string"
             assert len(error) > 0, "Error message should not be empty"
             assert retry == False, "Should not suggest retry for validation errors"
+            assert scan_error is not None, "Should return structured scan error"
+            assert scan_error.error_type.value == "validation", "Should categorize as validation error"
     
     @given(
         isbn13_prefix=st.sampled_from(['978', '979']),
@@ -260,11 +268,15 @@ class TestServiceIntegrationConsistencyProperties:
                 db.session.add(existing_book)
                 db.session.commit()
                 
-                # Process the same ISBN (should be detected as duplicate)
-                book, error, retry = process_scanned_barcode(valid_isbn13, scan_type)
+                # Process the same ISBN (should be detected as duplicate) - now returns 4 values
+                book, error, retry, scan_error = process_scanned_barcode(valid_isbn13, scan_type)
                 
                 # Should handle duplicate consistently
                 assert book is None, "Should not return book for duplicate ISBN"
+                assert error is not None, "Should return error for duplicate ISBN"
+                assert "already exists" in error.lower(), "Error should mention duplicate"
+                assert scan_error is not None, "Should return structured scan error"
+                assert scan_error.error_type.value == "duplicate", "Should categorize as duplicate error"
                 assert error is not None, "Should return error message for duplicate"
                 assert "already exists" in error.lower(), "Error should indicate duplicate"
                 assert retry == False, "Should not suggest retry for duplicates"
@@ -307,12 +319,13 @@ class TestISBNValidationProperties:
             check_digit = (10 - (checksum % 10)) % 10
             valid_isbn13 = isbn13_base + str(check_digit)
             
-            # Test validation
-            is_valid, error = validate_barcode_result(valid_isbn13)
+            # Test validation (now returns 3 values)
+            is_valid, normalized_isbn, scan_error = validate_barcode_result(valid_isbn13)
             
             # Should validate successfully
-            assert is_valid == True, "Valid ISBN-13 should pass validation"
-            assert error is None, "Valid ISBN-13 should not return error"
+            assert is_valid == True, "Valid ISBN should pass validation"
+            assert normalized_isbn == valid_isbn13, "Should return normalized ISBN"
+            assert scan_error is None, "Valid ISBN should not return error"
     
     @given(
         isbn10_digits=st.lists(st.integers(0, 9), min_size=9, max_size=9)
@@ -338,12 +351,13 @@ class TestISBNValidationProperties:
             
             valid_isbn10 = isbn10_base + correct_check_char
             
-            # Test validation
-            is_valid, error = validate_barcode_result(valid_isbn10)
+            # Test validation (now returns 3 values)
+            is_valid, normalized_isbn, scan_error = validate_barcode_result(valid_isbn10)
             
             # Should validate successfully
             assert is_valid == True, "Valid ISBN-10 should pass validation"
-            assert error is None, "Valid ISBN-10 should not return error"
+            assert normalized_isbn is not None, "Should return normalized ISBN"
+            assert scan_error is None, "Valid ISBN should not return error"
     
     @given(
         invalid_text=st.one_of(
@@ -367,14 +381,15 @@ class TestISBNValidationProperties:
         **Validates: Requirements 4.5**
         """
         with app.app_context():
-            # Test validation of invalid text
-            is_valid, error = validate_barcode_result(invalid_text)
+            # Test validation of invalid text (now returns 3 values)
+            is_valid, normalized_isbn, scan_error = validate_barcode_result(invalid_text)
             
             # Should reject invalid text
             assert is_valid == False, "Invalid text should be rejected"
-            assert error is not None, "Invalid text should return error message"
-            assert isinstance(error, str), "Error should be a string"
-            assert len(error) > 0, "Error message should not be empty"
+            assert normalized_isbn is None, "Invalid text should not return normalized ISBN"
+            assert scan_error is not None, "Invalid text should return scan error"
+            assert scan_error.error_type.value == "validation", "Should categorize as validation error"
+            assert len(scan_error.user_message) > 0, "Error message should not be empty"
     
     @given(
         isbn13_prefix=st.sampled_from(['978', '979']),
@@ -407,13 +422,15 @@ class TestISBNValidationProperties:
             if wrong_check_digit != correct_check_digit:
                 invalid_isbn13 = isbn13_base + str(wrong_check_digit)
                 
-                # Test validation
-                is_valid, error = validate_barcode_result(invalid_isbn13)
+                # Test validation (now returns 3 values)
+                is_valid, normalized_isbn, scan_error = validate_barcode_result(invalid_isbn13)
                 
                 # Should reject invalid checksum
                 assert is_valid == False, "Invalid checksum should be rejected"
-                assert error is not None, "Invalid checksum should return error"
-                assert "checksum" in error.lower(), "Error should mention checksum"
+                assert normalized_isbn is None, "Invalid checksum should not return normalized ISBN"
+                assert scan_error is not None, "Invalid checksum should return scan error"
+                assert scan_error.error_type.value == "validation", "Should categorize as validation error"
+                assert "checksum" in scan_error.user_message.lower(), "Error should mention checksum"
     
     @given(
         valid_isbn=st.one_of(
@@ -470,15 +487,18 @@ class TestISBNValidationProperties:
                 test_input = valid_isbn
                 expected_valid = True
             
-            # Test validation
-            is_valid, error = validate_barcode_result(test_input)
+            # Test validation (now returns 3 values)
+            is_valid, normalized_isbn, scan_error = validate_barcode_result(test_input)
             
             if expected_valid:
                 assert is_valid == True, f"Valid string ISBN should be accepted: {test_input}"
-                assert error is None, "Valid ISBN should not return error"
+                assert normalized_isbn is not None, "Valid input should return normalized ISBN"
+                assert scan_error is None, "Valid ISBN should not return error"
             else:
                 assert is_valid == False, f"Non-string input should be rejected: {test_input} ({type(test_input)})"
-                assert error is not None, "Invalid input should return error message"
+                assert normalized_isbn is None, "Invalid input should not return normalized ISBN"
+                assert scan_error is not None, "Invalid input should return scan error"
+                assert scan_error.error_type.value == "validation", "Should categorize as validation error"
 
 
 class TestBarcodeServiceUtilityFunctions:
@@ -518,17 +538,25 @@ class TestBarcodeServiceUtilityFunctions:
     @given(
         scanned_text=st.text(min_size=1, max_size=50),
         scan_type=st.sampled_from(['camera', 'file']),
-        error_message=st.text(min_size=1, max_size=200),
-        error_type=st.sampled_from(['validation', 'processing', 'api', 'database'])
+        error_message=st.text(min_size=1, max_size=200)
     )
     @settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
-    def test_error_logging_privacy_protection(self, app, scanned_text, scan_type, error_message, error_type):
+    def test_error_logging_privacy_protection(self, app, scanned_text, scan_type, error_message):
         """
         Test that error logging protects user privacy by truncating sensitive data.
         """
         with app.app_context():
+            # Create a scan error for testing
+            from app.services.barcode_service import create_scan_error, ScanErrorType, ScanErrorSeverity
+            scan_error = create_scan_error(
+                error_type=ScanErrorType.VALIDATION_ERROR,
+                severity=ScanErrorSeverity.LOW,
+                message=error_message,
+                user_message="Test error message"
+            )
+            
             # This should not raise any exceptions
-            log_scanning_error(scanned_text, scan_type, error_message, error_type)
+            log_scanning_error(scanned_text, scan_type, scan_error)
             
             # The function should complete without error
             # Privacy protection is tested by ensuring the function doesn't log full sensitive data
