@@ -25,8 +25,8 @@ This implementation plan breaks down the barcode scanning feature into discrete 
     - **Property 7: ISBN Validation**
     - **Validates: Requirements 1.2, 2.2, 7.1, 7.2, 7.3, 4.5**
 
-- [ ] 3. Create barcode scanning routes
-  - [ ] 3.1 Implement Flask routes for scanning workflow
+- [-] 3. Create barcode scanning routes
+  - [x] 3.1 Implement Flask routes for scanning workflow
     - Create `/scan` route for barcode scanner interface
     - Create `/scan/process` route for handling scanned results
     - Create `/scan/save` route for saving confirmed books
@@ -39,15 +39,15 @@ This implementation plan breaks down the barcode scanning feature into discrete 
     - Test error handling and validation in routes
     - _Requirements: 1.3, 2.3, 3.1, 4.1_
 
-- [ ] 4. Build camera scanning frontend
-  - [ ] 4.1 Create JavaScript barcode scanner component
+- [x] 4. Build camera scanning frontend
+  - [x] 4.1 Create JavaScript barcode scanner component
     - Implement html5-qrcode library integration with camera support
     - Add barcode format configuration for ISBN detection
     - Implement success callback integration with htmx
     - Add error handling for camera permissions and scanning failures
     - _Requirements: 1.1, 1.2, 1.4, 6.1, 6.4_
   
-  - [ ] 4.2 Create barcode scanner HTML template
+  - [x] 4.2 Create barcode scanner HTML template
     - Build responsive scanner interface with camera view
     - Add navigation links to existing book list
     - Implement loading indicators and user feedback

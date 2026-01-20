@@ -7,6 +7,11 @@
     <header class="app-header">
         <h1>📚 Book Management</h1>
         <p class="app-subtitle">Manage your personal book collection</p>
+        <nav class="app-nav">
+            <a href="{{ url_for('scan.barcode_scanner') }}" class="nav-button">
+                📷 Scan Barcode
+            </a>
+        </nav>
     </header>
 
     <!-- ISBN Input Form -->
