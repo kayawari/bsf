@@ -60,8 +60,8 @@ This implementation plan breaks down the barcode scanning feature into discrete 
     - **Property 12: Permission Error Handling**
     - **Validates: Requirements 1.3, 8.1, 8.2, 6.1**
 
-- [ ] 5. Implement file-based scanning
-  - [ ] 5.1 Add file upload scanning functionality
+- [x] 5. Implement file-based scanning
+  - [x] 5.1 Add file upload scanning functionality
     - Extend JavaScript component to support file selection
     - Implement image file processing with html5-qrcode
     - Add file type validation and error handling
@@ -72,14 +72,14 @@ This implementation plan breaks down the barcode scanning feature into discrete 
     - **Property 1: Barcode Extraction Consistency**
     - **Validates: Requirements 2.5, 1.2, 2.2**
 
-- [ ] 6. Create book confirmation interface
-  - [ ] 6.1 Build book information display template
+- [x] 6. Create book confirmation interface
+  - [x] 6.1 Build book information display template
     - Create fragment template for displaying retrieved book details
     - Add OK, Cancel, and "Return to Camera" buttons
     - Implement responsive design for mobile and desktop
     - _Requirements: 3.2, 3.4, 5.2, 5.3_
   
-  - [ ] 6.2 Implement book confirmation workflow
+  - [x] 6.2 Implement book confirmation workflow
     - Handle OK button to save book using existing book service
     - Handle Cancel button to return to scanning without saving
     - Handle "Return to Camera" navigation
