@@ -69,7 +69,7 @@ class TestBarcodeExtractionConsistencyProperties:
             
             # Both should return the same validation result
             assert camera_result == file_result, "Validation should be consistent regardless of scan method"
-            assert camera_result[0] == True, "Valid ISBN should be accepted"
+            assert camera_result[0], "Valid ISBN should be accepted"
             assert camera_result[1] == valid_isbn13, "Valid ISBN should return normalized ISBN"
             assert camera_result[2] is None, "Valid ISBN should not return error"
             
@@ -127,7 +127,7 @@ class TestBarcodeExtractionConsistencyProperties:
             
             # Results should be identical
             assert result1 == result2, "Validation should be deterministic"
-            assert result1[0] == True, "Valid ISBN-10 should be accepted"
+            assert result1[0], "Valid ISBN-10 should be accepted"
             assert result1[1] is not None, "Valid ISBN-10 should return normalized ISBN"
             assert result1[2] is None, "Valid ISBN-10 should not return error"
             
@@ -192,7 +192,7 @@ class TestServiceIntegrationConsistencyProperties:
                     # Verify the result is consistent with service integration
                     assert book is not None, "Should return book object from existing service"
                     assert error is None, "Should not return error for successful processing"
-                    assert retry == False, "Should return retry flag from existing service"
+                    assert not retry, "Should return retry flag from existing service"
                     assert scan_error is None, "Should not return scan error for successful processing"
                     
                     # Verify the book object properties match the mock
@@ -229,7 +229,7 @@ class TestServiceIntegrationConsistencyProperties:
             assert error is not None, "Should return error message for invalid ISBN"
             assert isinstance(error, str), "Error should be a string"
             assert len(error) > 0, "Error message should not be empty"
-            assert retry == False, "Should not suggest retry for validation errors"
+            assert not retry, "Should not suggest retry for validation errors"
             assert scan_error is not None, "Should return structured scan error"
             assert scan_error.error_type.value == "validation", "Should categorize as validation error"
     
@@ -279,7 +279,7 @@ class TestServiceIntegrationConsistencyProperties:
                 assert scan_error.error_type.value == "duplicate", "Should categorize as duplicate error"
                 assert error is not None, "Should return error message for duplicate"
                 assert "already exists" in error.lower(), "Error should indicate duplicate"
-                assert retry == False, "Should not suggest retry for duplicates"
+                assert not retry, "Should not suggest retry for duplicates"
                 
             finally:
                 db.drop_all()
@@ -323,7 +323,7 @@ class TestISBNValidationProperties:
             is_valid, normalized_isbn, scan_error = validate_barcode_result(valid_isbn13)
             
             # Should validate successfully
-            assert is_valid == True, "Valid ISBN should pass validation"
+            assert is_valid, "Valid ISBN should pass validation"
             assert normalized_isbn == valid_isbn13, "Should return normalized ISBN"
             assert scan_error is None, "Valid ISBN should not return error"
     
@@ -355,7 +355,7 @@ class TestISBNValidationProperties:
             is_valid, normalized_isbn, scan_error = validate_barcode_result(valid_isbn10)
             
             # Should validate successfully
-            assert is_valid == True, "Valid ISBN-10 should pass validation"
+            assert is_valid, "Valid ISBN-10 should pass validation"
             assert normalized_isbn is not None, "Should return normalized ISBN"
             assert scan_error is None, "Valid ISBN should not return error"
     
@@ -385,7 +385,7 @@ class TestISBNValidationProperties:
             is_valid, normalized_isbn, scan_error = validate_barcode_result(invalid_text)
             
             # Should reject invalid text
-            assert is_valid == False, "Invalid text should be rejected"
+            assert not is_valid, "Invalid text should be rejected"
             assert normalized_isbn is None, "Invalid text should not return normalized ISBN"
             assert scan_error is not None, "Invalid text should return scan error"
             assert scan_error.error_type.value == "validation", "Should categorize as validation error"
@@ -426,7 +426,7 @@ class TestISBNValidationProperties:
                 is_valid, normalized_isbn, scan_error = validate_barcode_result(invalid_isbn13)
                 
                 # Should reject invalid checksum
-                assert is_valid == False, "Invalid checksum should be rejected"
+                assert not is_valid, "Invalid checksum should be rejected"
                 assert normalized_isbn is None, "Invalid checksum should not return normalized ISBN"
                 assert scan_error is not None, "Invalid checksum should return scan error"
                 assert scan_error.error_type.value == "validation", "Should categorize as validation error"
@@ -465,19 +465,19 @@ class TestISBNValidationProperties:
         """
         with app.app_context():
             # Convert valid ISBN to different input types
-            if input_type == str:
+            if input_type is str:
                 test_input = valid_isbn
                 expected_valid = True
-            elif input_type == int and valid_isbn.replace('X', '').isdigit():
+            elif input_type is int and valid_isbn.replace('X', '').isdigit():
                 test_input = int(valid_isbn.replace('X', '10'))
                 expected_valid = False  # Should reject non-string input
-            elif input_type == float:
+            elif input_type is float:
                 test_input = 123.456
                 expected_valid = False
-            elif input_type == list:
+            elif input_type is list:
                 test_input = list(valid_isbn)
                 expected_valid = False
-            elif input_type == dict:
+            elif input_type is dict:
                 test_input = {"isbn": valid_isbn}
                 expected_valid = False
             elif input_type is None:
@@ -491,11 +491,11 @@ class TestISBNValidationProperties:
             is_valid, normalized_isbn, scan_error = validate_barcode_result(test_input)
             
             if expected_valid:
-                assert is_valid == True, f"Valid string ISBN should be accepted: {test_input}"
+                assert is_valid, f"Valid string ISBN should be accepted: {test_input}"
                 assert normalized_isbn is not None, "Valid input should return normalized ISBN"
                 assert scan_error is None, "Valid ISBN should not return error"
             else:
-                assert is_valid == False, f"Non-string input should be rejected: {test_input} ({type(test_input)})"
+                assert not is_valid, f"Non-string input should be rejected: {test_input} ({type(test_input)})"
                 assert normalized_isbn is None, "Invalid input should not return normalized ISBN"
                 assert scan_error is not None, "Invalid input should return scan error"
                 assert scan_error.error_type.value == "validation", "Should categorize as validation error"

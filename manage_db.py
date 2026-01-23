@@ -2,7 +2,6 @@
 """Database management script for the book management application."""
 
 import sys
-import os
 from pathlib import Path
 
 # Add the project root to Python path

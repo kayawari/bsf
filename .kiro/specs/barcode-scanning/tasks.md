@@ -105,11 +105,11 @@ This implementation plan breaks down the barcode scanning feature into discrete 
     - **Property 6: Duplicate Handling**
     - **Validates: Requirements 1.4, 2.4, 3.3, 4.4, 6.3, 3.5, 6.2, 4.3**
 
-- [ ] 8. Checkpoint - Ensure all tests pass
+- [x] 8. Checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 9. Add CSS styling and responsive design
-  - [ ] 9.1 Style barcode scanning interface
+- [-] 9. Add CSS styling and responsive design
+  - [x] 9.1 Style barcode scanning interface
     - Add CSS for camera view and scanning interface
     - Implement responsive design for mobile, tablet, and desktop
     - Style book confirmation interface and buttons

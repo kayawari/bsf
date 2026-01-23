@@ -1,10 +1,8 @@
 """
 Test basic application setup and configuration.
 """
-import pytest
-import os
 from pathlib import Path
-from app import create_app, db
+from app import create_app
 
 def test_app_creation():
     """Test that the Flask app can be created successfully."""

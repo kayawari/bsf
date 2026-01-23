@@ -7,7 +7,6 @@ normalizing ISBNs, and checking for duplicates in the database.
 
 import re
 from typing import Optional, Tuple
-from app import db
 from app.models.book import Book
 
 

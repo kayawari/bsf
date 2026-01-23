@@ -1,0 +1,5 @@
+Requirement already satisfied: mypy in ./venv/lib/python3.14/site-packages (1.19.1)
+Requirement already satisfied: typing_extensions>=4.6.0 in ./venv/lib/python3.14/site-packages (from mypy) (4.15.0)
+Requirement already satisfied: mypy_extensions>=1.0.0 in ./venv/lib/python3.14/site-packages (from mypy) (1.1.0)
+Requirement already satisfied: pathspec>=0.9.0 in ./venv/lib/python3.14/site-packages (from mypy) (1.0.3)
+Requirement already satisfied: librt>=0.6.2 in ./venv/lib/python3.14/site-packages (from mypy) (0.7.8)

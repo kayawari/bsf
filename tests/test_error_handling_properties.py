@@ -2,15 +2,11 @@
 Property-based tests for error handling functionality.
 """
 
-import pytest
-import logging
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import patch
 from hypothesis import given, strategies as st, settings, HealthCheck
-from flask import Flask
 from app import create_app, db
 from app.models.book import Book
 from app.services.book_service import process_and_store_book
-from app.services.isbn_service import validate_isbn
 
 
 def create_test_app():
