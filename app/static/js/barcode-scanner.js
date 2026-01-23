@@ -17,28 +17,24 @@ class BarcodeScanner {
         this.scanner = null;
         this.isScanning = false;
         this.isProcessing = false; // Debouncing flag
+        this.isTogglingCamera = false; // Lock flag for camera toggle operations
         this.libraryLoaded = false;
-        this.cameraStream = null; // Track camera stream for cleanup
         this.scanTimeout = null; // For mobile battery optimization
         this.lastScanTime = 0; // Debouncing timestamp
         this.scanCooldown = 2000; // 2 second cooldown between scans
         
-        this.options = {
+        // Basic options that don't depend on the library
+        this.baseOptions = {
             fps: this.isMobile() ? 5 : 10, // Lower FPS on mobile for battery
             qrbox: { width: 250, height: 250 },
-            formatsToSupport: [
-                Html5QrcodeSupportedFormats.EAN_13,
-                Html5QrcodeSupportedFormats.EAN_8,
-                Html5QrcodeSupportedFormats.UPC_A,
-                Html5QrcodeSupportedFormats.UPC_E,
-                Html5QrcodeSupportedFormats.CODE_128,
-                Html5QrcodeSupportedFormats.CODE_39
-            ],
             // Mobile optimizations
             aspectRatio: this.isMobile() ? 1.0 : 1.777777, // Square on mobile
             disableFlip: this.isMobile(), // Disable flip on mobile for performance
             ...options
         };
+        
+        // Options that depend on the library will be set after loading
+        this.options = null;
         
         this.setupEventListeners();
         this.setupVisibilityHandling();
@@ -79,8 +75,26 @@ class BarcodeScanner {
             // Wait a bit for the library to initialize
             await new Promise(resolve => setTimeout(resolve, 100));
             
-            if (typeof Html5Qrcode === 'undefined') {
+            if (typeof Html5Qrcode === 'undefined' || typeof Html5QrcodeSupportedFormats === 'undefined') {
                 throw new Error('Library failed to initialize');
+            }
+
+            // Now that the library is loaded, set up the full options
+            this.options = {
+                ...this.baseOptions,
+                formatsToSupport: [
+                    Html5QrcodeSupportedFormats.EAN_13,
+                    Html5QrcodeSupportedFormats.EAN_8,
+                    Html5QrcodeSupportedFormats.UPC_A,
+                    Html5QrcodeSupportedFormats.UPC_E,
+                    Html5QrcodeSupportedFormats.CODE_128,
+                    Html5QrcodeSupportedFormats.CODE_39
+                ]
+            };
+
+            // Apply mobile optimizations now that options are available
+            if (this.isMobile() && this.options.fps) {
+                this.options.fps = Math.min(this.options.fps, 5);
             }
 
             this.libraryLoaded = true;
@@ -185,8 +199,10 @@ class BarcodeScanner {
             // Auto-stop scanning after 2 minutes on mobile to save battery
             this.maxScanTime = 2 * 60 * 1000; // 2 minutes
             
-            // Reduce scan frequency on mobile
-            this.options.fps = Math.min(this.options.fps, 5);
+            // Reduce scan frequency on mobile (only if options are available)
+            if (this.options && this.options.fps) {
+                this.options.fps = Math.min(this.options.fps, 5);
+            }
             
             // Add touch event optimizations
             document.addEventListener('touchstart', () => {
@@ -220,12 +236,15 @@ class BarcodeScanner {
      * Start camera scanning with enhanced resource management
      */
     async startCamera() {
-        if (this.isScanning || this.isProcessing) {
+        if (this.isScanning || this.isProcessing || this.isTogglingCamera) {
             return;
         }
 
+        this.isTogglingCamera = true;
+
         // Initialize scanner if not already done
         if (!await this.init()) {
+            this.isTogglingCamera = false;
             return;
         }
 
@@ -264,9 +283,12 @@ class BarcodeScanner {
                 }, this.maxScanTime);
             }
 
+            this.isTogglingCamera = false;
+
         } catch (error) {
             console.error('Camera start error:', error);
             this.handleCameraError(error);
+            this.isTogglingCamera = false;
         }
     }
 
@@ -274,9 +296,11 @@ class BarcodeScanner {
      * Stop camera scanning with proper resource cleanup
      */
     async stopCamera() {
-        if (!this.isScanning) {
+        if (!this.isScanning || this.isTogglingCamera) {
             return;
         }
+
+        this.isTogglingCamera = true;
 
         try {
             // Clear any timeouts
@@ -290,14 +314,6 @@ class BarcodeScanner {
                 await this.scanner.stop();
             }
 
-            // Clean up camera stream if we have access to it
-            if (this.cameraStream) {
-                this.cameraStream.getTracks().forEach(track => {
-                    track.stop();
-                });
-                this.cameraStream = null;
-            }
-
             this.isScanning = false;
             this.updateUI('stopped');
             
@@ -306,17 +322,21 @@ class BarcodeScanner {
             // Force cleanup even if stop() fails
             this.isScanning = false;
             this.updateUI('stopped');
+        } finally {
+            this.isTogglingCamera = false;
         }
     }
 
     /**
      * Handle successful barcode scan with debouncing
      */
-    onScanSuccess(decodedText, decodedResult) {
+    onScanSuccess(decodedText, decodedResult, scanType = 'camera') {
         const now = Date.now();
         
         // Debouncing: prevent multiple scans within cooldown period
-        if (this.isProcessing || (now - this.lastScanTime) < this.scanCooldown) {
+        // Ignore cooldown for file scans as they are explicit user actions
+        const checkCooldown = scanType !== 'file';
+        if (this.isProcessing || (checkCooldown && (now - this.lastScanTime) < this.scanCooldown)) {
             return;
         }
 
@@ -325,14 +345,16 @@ class BarcodeScanner {
         
         console.log('Barcode scanned:', decodedText);
         
-        // Stop scanning to prevent multiple scans
-        this.stopCamera();
+        // Stop camera scanning if it was camera scan (don't stop for file scans)
+        if (scanType === 'camera') {
+            this.stopCamera();
+        }
         
         // Show processing indicator
         this.showLoading('Processing barcode...');
         
         // Send scanned result to server via htmx
-        this.sendToServer(decodedText, 'camera');
+        this.sendToServer(decodedText, scanType);
     }
 
     /**
@@ -390,7 +412,10 @@ class BarcodeScanner {
             
             // Scan the file
             const decodedText = await this.scanner.scanFile(file, true);
-            this.onScanSuccess(decodedText, null);
+            
+            // Reset processing flag to allow onScanSuccess to proceed
+            this.isProcessing = false;
+            this.onScanSuccess(decodedText, null, 'file');
             
         } catch (error) {
             console.error('File scan error:', error);
@@ -703,14 +728,6 @@ class BarcodeScanner {
         // Stop camera if running
         if (this.isScanning) {
             this.stopCamera();
-        }
-
-        // Clean up camera stream
-        if (this.cameraStream) {
-            this.cameraStream.getTracks().forEach(track => {
-                track.stop();
-            });
-            this.cameraStream = null;
         }
 
         // Clear scanner instance
