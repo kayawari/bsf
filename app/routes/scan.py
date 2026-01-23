@@ -117,18 +117,15 @@ def process_barcode_scan():
             return redirect(url_for("scan.barcode_scanner"))
 
     # Success - show book confirmation
-    try:
-        # Try htmx request first
-        if request.headers.get("HX-Request"):
-            return render_template(
-                "fragments/scanned_book_confirmation.html",
-                book=book,
-                warning=error_or_warning,
-                scanned_isbn=scanned_text,
-                should_retry_later=should_retry_later
-            )
-        raise ValueError("Not an htmx request")
-    except (ValueError, Exception):
+    if request.headers.get("HX-Request"):
+        return render_template(
+            "fragments/scanned_book_confirmation.html",
+            book=book,
+            warning=error_or_warning,
+            scanned_isbn=scanned_text,
+            should_retry_later=should_retry_later
+        )
+    else:
         # Progressive enhancement fallback - redirect to book detail
         if error_or_warning:
             flash(f"Book found with limited information: {error_or_warning}", "warning")

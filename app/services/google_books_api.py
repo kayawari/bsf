@@ -406,8 +406,8 @@ def get_book_metadata_by_isbn(
 
     # Search for book by ISBN
     api_response, search_error = search_book_by_isbn_with_retry(isbn)
-    if search_error:
-        return None, search_error
+    if search_error or api_response is None:
+        return None, search_error or "No API response received"
 
     # Extract metadata from response
     metadata, extract_error = extract_book_metadata(api_response)

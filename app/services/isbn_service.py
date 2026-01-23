@@ -23,8 +23,8 @@ def clean_isbn(isbn: str) -> str:
     if not isbn:
         return ""
 
-    # Remove hyphens, spaces, and convert to uppercase
-    cleaned = re.sub(r"[-\s]", "", isbn.strip().upper())
+    # Remove hyphens, spaces, dots, and convert to uppercase
+    cleaned = re.sub(r"[-\s\.]", "", isbn.strip().upper())
     return cleaned
 
 
@@ -214,7 +214,7 @@ def is_duplicate_isbn(isbn: str) -> Tuple[bool, Optional[str], Optional[str]]:
     # First validate and normalize the ISBN
     is_valid, normalized, error = validate_isbn(isbn)
 
-    if not is_valid:
+    if not is_valid or normalized is None:
         return False, None, error
 
     # Check if it exists in database

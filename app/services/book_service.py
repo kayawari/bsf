@@ -35,8 +35,8 @@ def process_and_store_book(isbn: str) -> Tuple[Optional[Book], Optional[str]]:
 
     # Step 1: Validate and normalize ISBN
     is_valid, normalized_isbn, validation_error = validate_isbn(isbn)
-    if not is_valid:
-        return None, validation_error
+    if not is_valid or normalized_isbn is None:
+        return None, validation_error or "Invalid ISBN format"
 
     # Step 2: Check for duplicates
     is_duplicate, _, duplicate_error = is_duplicate_isbn(isbn)
@@ -57,6 +57,9 @@ def process_and_store_book(isbn: str) -> Tuple[Optional[Book], Optional[str]]:
     book, storage_error = create_book_from_metadata(normalized_isbn, metadata)
     if storage_error:
         return None, storage_error
+
+    # At this point, book should not be None since storage_error is None
+    assert book is not None, "Book should not be None when storage_error is None"
 
     # Log success with appropriate message
     if is_fallback:
@@ -91,8 +94,8 @@ def process_and_store_book_with_retry_option(
 
     # Step 1: Validate and normalize ISBN
     is_valid, normalized_isbn, validation_error = validate_isbn(isbn)
-    if not is_valid:
-        return None, validation_error, False
+    if not is_valid or normalized_isbn is None:
+        return None, validation_error or "Invalid ISBN format", False
 
     # Step 2: Check for duplicates
     is_duplicate, _, duplicate_error = is_duplicate_isbn(isbn)
@@ -114,6 +117,9 @@ def process_and_store_book_with_retry_option(
     book, storage_error = create_book_from_metadata(normalized_isbn, metadata)
     if storage_error:
         return None, storage_error, False
+
+    # At this point, book should not be None since storage_error is None
+    assert book is not None, "Book should not be None when storage_error is None"
 
     # Determine if user should retry later
     should_retry_later = (
@@ -276,7 +282,7 @@ def get_book_by_isbn(isbn: str) -> Optional[Book]:
     try:
         # Normalize ISBN for consistent lookup
         is_valid, normalized_isbn, _ = validate_isbn(isbn)
-        if not is_valid:
+        if not is_valid or normalized_isbn is None:
             return None
 
         book = Book.query.filter_by(isbn=normalized_isbn).first()

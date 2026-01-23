@@ -8,7 +8,7 @@ from pathlib import Path
 project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
 
-from app.database import init_database, drop_database, reset_database, get_database_info
+from app.database import init_database, drop_database, reset_database, get_database_info  # noqa: E402
 
 
 def main():
