@@ -591,6 +591,49 @@ body {
     padding: 2rem;
 }
 
+/* Mobile Performance Optimizations */
+@media (max-width: 768px) {
+    .scanner-page {
+        /* Reduce animations on mobile for better performance */
+        animation: none;
+    }
+    
+    .scanner-header {
+        padding: 1rem;
+    }
+    
+    .scanner-header h1 {
+        font-size: 1.5rem;
+    }
+    
+    .scanner-main {
+        padding: 1rem;
+    }
+    
+    /* Optimize touch targets for mobile */
+    .btn, .file-upload-label, .scanner-nav .nav-link {
+        min-height: 48px; /* Larger touch targets */
+        padding: 0.875rem 1.25rem;
+    }
+    
+    /* Reduce complex animations on mobile */
+    .btn::before, .file-upload-label::before {
+        display: none;
+    }
+    
+    /* Optimize camera view for mobile */
+    .barcode-reader {
+        min-height: 250px; /* Smaller on mobile */
+    }
+    
+    /* Reduce box shadows for better performance */
+    .camera-scanner-section:hover,
+    .file-scanner-section:hover,
+    .manual-entry-section:hover {
+        box-shadow: none;
+    }
+}
+
 /* Barcode Scanner Container */
 .barcode-scanner-container {
     max-width: 600px;
@@ -619,6 +662,14 @@ body {
     animation: pulse 2s ease-in-out infinite alternate;
 }
 
+/* Reduce animations on mobile for battery optimization */
+@media (max-width: 768px) {
+    .loading-indicator {
+        animation: none;
+        background: #f8f9fa; /* Static background on mobile */
+    }
+}
+
 @keyframes pulse {
     from {
         background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
@@ -636,11 +687,14 @@ body {
     border-radius: 50%;
     animation: spin 1s linear infinite;
     margin: 0 auto 1rem;
+    /* Use transform3d for hardware acceleration */
+    transform: translateZ(0);
+    will-change: transform;
 }
 
 @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+    0% { transform: rotate(0deg) translateZ(0); }
+    100% { transform: rotate(360deg) translateZ(0); }
 }
 
 /* Alert Styles */
@@ -728,6 +782,23 @@ body {
     position: relative;
     box-shadow: 0 4px 12px rgba(0,0,0,0.2);
     transition: all 0.3s ease;
+    /* Hardware acceleration for better mobile performance */
+    transform: translateZ(0);
+    will-change: transform;
+}
+
+/* Mobile optimizations for camera view */
+@media (max-width: 768px) {
+    .barcode-reader {
+        min-height: 250px;
+        /* Disable transitions on mobile for better performance */
+        transition: none;
+    }
+    
+    .barcode-reader::before {
+        width: 200px;
+        height: 200px;
+    }
 }
 
 .barcode-reader.scanning {

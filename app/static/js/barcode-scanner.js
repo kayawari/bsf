@@ -3,6 +3,12 @@
  * 
  * Integrates html5-qrcode library for camera-based and file-based barcode scanning
  * with htmx for server communication and progressive enhancement.
+ * 
+ * Performance optimizations:
+ * - Lazy loading of html5-qrcode library
+ * - Camera resource management and cleanup
+ * - Mobile performance and battery optimization
+ * - Debouncing to prevent multiple simultaneous scans
  */
 
 class BarcodeScanner {
@@ -10,8 +16,15 @@ class BarcodeScanner {
         this.containerId = containerId;
         this.scanner = null;
         this.isScanning = false;
+        this.isProcessing = false; // Debouncing flag
+        this.libraryLoaded = false;
+        this.cameraStream = null; // Track camera stream for cleanup
+        this.scanTimeout = null; // For mobile battery optimization
+        this.lastScanTime = 0; // Debouncing timestamp
+        this.scanCooldown = 2000; // 2 second cooldown between scans
+        
         this.options = {
-            fps: 10,
+            fps: this.isMobile() ? 5 : 10, // Lower FPS on mobile for battery
             qrbox: { width: 250, height: 250 },
             formatsToSupport: [
                 Html5QrcodeSupportedFormats.EAN_13,
@@ -21,22 +34,88 @@ class BarcodeScanner {
                 Html5QrcodeSupportedFormats.CODE_128,
                 Html5QrcodeSupportedFormats.CODE_39
             ],
+            // Mobile optimizations
+            aspectRatio: this.isMobile() ? 1.0 : 1.777777, // Square on mobile
+            disableFlip: this.isMobile(), // Disable flip on mobile for performance
             ...options
         };
         
-        this.init();
+        this.setupEventListeners();
+        this.setupVisibilityHandling();
+        this.setupMobileOptimizations();
     }
 
     /**
-     * Initialize the barcode scanner
+     * Detect if running on mobile device
      */
-    init() {
+    isMobile() {
+        return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+               window.innerWidth <= 768;
+    }
+
+    /**
+     * Lazy load the html5-qrcode library
+     */
+    async loadLibrary() {
+        if (this.libraryLoaded || typeof Html5Qrcode !== 'undefined') {
+            this.libraryLoaded = true;
+            return true;
+        }
+
         try {
+            this.showLoading('Loading barcode scanner...');
+            
+            // Create script element for lazy loading
+            const script = document.createElement('script');
+            script.src = 'https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js';
+            
+            // Wait for script to load
+            await new Promise((resolve, reject) => {
+                script.onload = resolve;
+                script.onerror = reject;
+                document.head.appendChild(script);
+            });
+
+            // Wait a bit for the library to initialize
+            await new Promise(resolve => setTimeout(resolve, 100));
+            
+            if (typeof Html5Qrcode === 'undefined') {
+                throw new Error('Library failed to initialize');
+            }
+
+            this.libraryLoaded = true;
+            this.hideLoading();
+            return true;
+            
+        } catch (error) {
+            console.error('Failed to load html5-qrcode library:', error);
+            this.hideLoading();
+            this.showError('Failed to load barcode scanning library. Please refresh the page.');
+            return false;
+        }
+    }
+
+    /**
+     * Initialize the barcode scanner (called when needed)
+     */
+    async init() {
+        if (this.scanner) {
+            return true; // Already initialized
+        }
+
+        try {
+            // Lazy load library if not already loaded
+            if (!await this.loadLibrary()) {
+                return false;
+            }
+
             this.scanner = new Html5Qrcode(this.containerId);
-            this.setupEventListeners();
+            return true;
+            
         } catch (error) {
             console.error('Failed to initialize barcode scanner:', error);
             this.showError('Failed to initialize barcode scanner. Please try refreshing the page.');
+            return false;
         }
     }
 
@@ -76,10 +155,77 @@ class BarcodeScanner {
     }
 
     /**
-     * Start camera scanning
+     * Setup visibility change handling for battery optimization
+     */
+    setupVisibilityHandling() {
+        // Stop camera when page becomes hidden to save battery
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden && this.isScanning) {
+                this.pauseScanning();
+            } else if (!document.hidden && this.scanner && !this.isScanning) {
+                // Optionally resume scanning when page becomes visible
+                // For now, just show the start button
+                this.updateUI('stopped');
+            }
+        });
+
+        // Handle page focus/blur for additional battery optimization
+        window.addEventListener('blur', () => {
+            if (this.isScanning) {
+                this.pauseScanning();
+            }
+        });
+    }
+
+    /**
+     * Setup mobile-specific optimizations
+     */
+    setupMobileOptimizations() {
+        if (this.isMobile()) {
+            // Auto-stop scanning after 2 minutes on mobile to save battery
+            this.maxScanTime = 2 * 60 * 1000; // 2 minutes
+            
+            // Reduce scan frequency on mobile
+            this.options.fps = Math.min(this.options.fps, 5);
+            
+            // Add touch event optimizations
+            document.addEventListener('touchstart', () => {
+                // Prevent accidental touches during scanning
+                if (this.isScanning) {
+                    // Could add haptic feedback here if needed
+                }
+            }, { passive: true });
+        }
+    }
+
+    /**
+     * Pause scanning (for visibility changes)
+     */
+    pauseScanning() {
+        if (this.isScanning && this.scanner) {
+            this.scanner.pause();
+        }
+    }
+
+    /**
+     * Resume scanning
+     */
+    resumeScanning() {
+        if (this.scanner && !this.isScanning) {
+            this.scanner.resume();
+        }
+    }
+
+    /**
+     * Start camera scanning with enhanced resource management
      */
     async startCamera() {
-        if (this.isScanning) {
+        if (this.isScanning || this.isProcessing) {
+            return;
+        }
+
+        // Initialize scanner if not already done
+        if (!await this.init()) {
             return;
         }
 
@@ -98,7 +244,7 @@ class BarcodeScanner {
                 camera.label.toLowerCase().includes('rear')
             )?.id || cameras[0].id;
 
-            // Start scanning
+            // Start scanning with mobile-optimized config
             await this.scanner.start(
                 cameraId,
                 this.options,
@@ -110,6 +256,14 @@ class BarcodeScanner {
             this.updateUI('scanning');
             this.hideLoading();
 
+            // Set up auto-stop timer for mobile battery optimization
+            if (this.isMobile() && this.maxScanTime) {
+                this.scanTimeout = setTimeout(() => {
+                    this.stopCamera();
+                    this.showError('Scanning stopped to save battery. Tap "Start Camera" to continue.', true);
+                }, this.maxScanTime);
+            }
+
         } catch (error) {
             console.error('Camera start error:', error);
             this.handleCameraError(error);
@@ -117,7 +271,7 @@ class BarcodeScanner {
     }
 
     /**
-     * Stop camera scanning
+     * Stop camera scanning with proper resource cleanup
      */
     async stopCamera() {
         if (!this.isScanning) {
@@ -125,18 +279,50 @@ class BarcodeScanner {
         }
 
         try {
-            await this.scanner.stop();
+            // Clear any timeouts
+            if (this.scanTimeout) {
+                clearTimeout(this.scanTimeout);
+                this.scanTimeout = null;
+            }
+
+            // Stop the scanner
+            if (this.scanner) {
+                await this.scanner.stop();
+            }
+
+            // Clean up camera stream if we have access to it
+            if (this.cameraStream) {
+                this.cameraStream.getTracks().forEach(track => {
+                    track.stop();
+                });
+                this.cameraStream = null;
+            }
+
             this.isScanning = false;
             this.updateUI('stopped');
+            
         } catch (error) {
             console.error('Error stopping camera:', error);
+            // Force cleanup even if stop() fails
+            this.isScanning = false;
+            this.updateUI('stopped');
         }
     }
 
     /**
-     * Handle successful barcode scan
+     * Handle successful barcode scan with debouncing
      */
     onScanSuccess(decodedText, decodedResult) {
+        const now = Date.now();
+        
+        // Debouncing: prevent multiple scans within cooldown period
+        if (this.isProcessing || (now - this.lastScanTime) < this.scanCooldown) {
+            return;
+        }
+
+        this.isProcessing = true;
+        this.lastScanTime = now;
+        
         console.log('Barcode scanned:', decodedText);
         
         // Stop scanning to prevent multiple scans
@@ -169,9 +355,17 @@ class BarcodeScanner {
             return;
         }
 
+        // Prevent multiple file processing
+        if (this.isProcessing) {
+            return;
+        }
+
+        this.isProcessing = true;
+
         // Enhanced file validation
         const validationResult = this.validateFile(file);
         if (!validationResult.valid) {
+            this.isProcessing = false;
             this.sendErrorToServer(
                 validationResult.errorType,
                 validationResult.message,
@@ -186,6 +380,12 @@ class BarcodeScanner {
         }
 
         try {
+            // Initialize scanner if not already done
+            if (!await this.init()) {
+                this.isProcessing = false;
+                return;
+            }
+
             this.showLoading('Processing image...');
             
             // Scan the file
@@ -194,6 +394,7 @@ class BarcodeScanner {
             
         } catch (error) {
             console.error('File scan error:', error);
+            this.isProcessing = false;
             this.sendErrorToServer(
                 'barcode_detection_error',
                 'Could not detect a barcode in this image.',
@@ -221,14 +422,15 @@ class BarcodeScanner {
             };
         }
 
-        // Check file size (max 10MB)
-        const maxSize = 10 * 1024 * 1024; // 10MB
+        // Check file size (max 10MB, but recommend smaller on mobile)
+        const maxSize = this.isMobile() ? 5 * 1024 * 1024 : 10 * 1024 * 1024; // 5MB on mobile, 10MB on desktop
         if (file.size > maxSize) {
             const sizeMB = Math.round(file.size / (1024 * 1024));
+            const maxMB = Math.round(maxSize / (1024 * 1024));
             return {
                 valid: false,
                 errorType: 'file_size_error',
-                message: `File size too large (${sizeMB}MB). Please select an image smaller than 10MB.`
+                message: `File size too large (${sizeMB}MB). Please select an image smaller than ${maxMB}MB.`
             };
         }
 
@@ -249,9 +451,11 @@ class BarcodeScanner {
             swap: 'innerHTML'
         }).then(() => {
             this.hideLoading();
+            this.isProcessing = false;
         }).catch((error) => {
             console.error('Server communication error:', error);
             this.hideLoading();
+            this.isProcessing = false;
             
             // Determine if this is a network error
             const isNetworkError = !navigator.onLine || 
@@ -289,6 +493,7 @@ class BarcodeScanner {
      */
     handleCameraError(error) {
         this.hideLoading();
+        this.isProcessing = false;
         
         let errorType = 'camera_error';
         let errorMessage = 'Camera access failed. ';
@@ -486,13 +691,42 @@ class BarcodeScanner {
     }
 
     /**
-     * Cleanup scanner resources
+     * Cleanup scanner resources with enhanced cleanup
      */
     destroy() {
+        // Clear any timeouts
+        if (this.scanTimeout) {
+            clearTimeout(this.scanTimeout);
+            this.scanTimeout = null;
+        }
+
+        // Stop camera if running
         if (this.isScanning) {
             this.stopCamera();
         }
-        this.scanner = null;
+
+        // Clean up camera stream
+        if (this.cameraStream) {
+            this.cameraStream.getTracks().forEach(track => {
+                track.stop();
+            });
+            this.cameraStream = null;
+        }
+
+        // Clear scanner instance
+        if (this.scanner) {
+            try {
+                this.scanner.clear();
+            } catch (error) {
+                console.warn('Error clearing scanner:', error);
+            }
+            this.scanner = null;
+        }
+
+        // Reset flags
+        this.isScanning = false;
+        this.isProcessing = false;
+        this.libraryLoaded = false;
     }
 }
 
@@ -501,15 +735,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Only initialize if we're on the scanner page
     const scannerContainer = document.getElementById('barcode-reader');
     if (scannerContainer) {
-        // Check if html5-qrcode library is loaded
-        if (typeof Html5Qrcode === 'undefined') {
-            console.error('html5-qrcode library not loaded');
-            document.getElementById('error-message').style.display = 'block';
-            document.getElementById('error-text').textContent = 'Barcode scanning library failed to load. Please refresh the page.';
-            return;
-        }
-
-        // Initialize the scanner
+        // Initialize the scanner (library will be loaded lazily)
         window.barcodeScanner = new BarcodeScanner('barcode-reader');
     }
 });
@@ -518,5 +744,31 @@ document.addEventListener('DOMContentLoaded', function() {
 window.addEventListener('beforeunload', function() {
     if (window.barcodeScanner) {
         window.barcodeScanner.destroy();
+    }
+});
+
+// Additional cleanup for mobile battery optimization
+window.addEventListener('pagehide', function() {
+    if (window.barcodeScanner) {
+        window.barcodeScanner.destroy();
+    }
+});
+
+// Handle orientation changes on mobile
+window.addEventListener('orientationchange', function() {
+    if (window.barcodeScanner && window.barcodeScanner.isScanning) {
+        // Restart scanner after orientation change for better performance
+        setTimeout(() => {
+            if (window.barcodeScanner) {
+                window.barcodeScanner.stopCamera().then(() => {
+                    // Give time for orientation to settle
+                    setTimeout(() => {
+                        if (window.barcodeScanner) {
+                            window.barcodeScanner.startCamera();
+                        }
+                    }, 500);
+                });
+            }
+        }, 100);
     }
 });
