@@ -1,0 +1,101 @@
+<!-- Barcode Scanner Fragment -->
+<div class="barcode-scanner-container">
+    
+    <!-- Loading indicator -->
+    <div id="loading-indicator" class="loading-indicator" style="display: none;">
+        <div class="loading-spinner"></div>
+        <p id="loading-text">Loading...</p>
+    </div>
+
+    <!-- Error message display -->
+    <div id="error-message" class="alert alert-error" style="display: none;" role="alert">
+        <strong>Error:</strong> <span id="error-text"></span>
+        
+        <!-- File option fallback -->
+        <div id="file-option" class="file-fallback" style="display: none;">
+            <p>Try uploading an image instead:</p>
+            <div class="file-upload-section">
+                <label for="barcode-file-input" class="file-upload-label">
+                    <span class="file-upload-text">Choose Image File</span>
+                    <input type="file" id="barcode-file-input" accept="image/*" class="file-input">
+                </label>
+            </div>
+        </div>
+    </div>
+
+    <!-- Success message from server -->
+    {% if success %}
+    <div class="alert alert-success" role="alert">
+        <strong>Success!</strong> {{ success }}
+    </div>
+    {% endif %}
+
+    <!-- Camera scanner section -->
+    <div class="camera-scanner-section">
+        <h2>Camera Scanner</h2>
+        <p class="scanner-instructions">
+            Position a book barcode in the camera view below. The scanner will automatically detect and process the barcode.
+        </p>
+
+        <!-- Camera view container -->
+        <div class="camera-container">
+            <div id="barcode-reader" class="barcode-reader"></div>
+        </div>
+
+        <!-- Camera controls -->
+        <div class="camera-controls">
+            <button id="start-camera-btn" type="button" class="btn btn-primary">
+                📷 Start Camera
+            </button>
+            <button id="stop-camera-btn" type="button" class="btn btn-secondary" style="display: none;">
+                ⏹️ Stop Camera
+            </button>
+        </div>
+    </div>
+
+    <!-- File scanner section -->
+    <div id="file-scan-section" class="file-scanner-section">
+        <h2>Upload Image</h2>
+        <p class="scanner-instructions">
+            Have a photo of a barcode? Upload it here to scan.
+        </p>
+
+        <div class="file-upload-section">
+            <label for="barcode-file-input-main" class="file-upload-label">
+                <span class="file-upload-icon">📁</span>
+                <span class="file-upload-text">Choose Image File</span>
+                <input type="file" id="barcode-file-input-main" accept="image/jpeg,image/jpg,image/png,image/webp" class="file-input">
+            </label>
+            <p class="file-help-text">
+                Supported formats: JPEG, PNG, WebP (max 10MB)
+            </p>
+        </div>
+    </div>
+
+    <!-- Manual entry fallback -->
+    <div class="manual-entry-section">
+        <h2>Manual Entry</h2>
+        <p class="scanner-instructions">
+            Can't scan? Enter the ISBN manually.
+        </p>
+        <a href="{{ url_for('book.index') }}" id="manual-entry-btn" class="btn btn-outline">
+            ✏️ Enter ISBN Manually
+        </a>
+    </div>
+
+    <!-- Help section -->
+    <div class="scanner-help">
+        <details class="help-details">
+            <summary>Scanning Tips</summary>
+            <div class="help-content">
+                <ul>
+                    <li><strong>Camera:</strong> Hold the book steady and ensure good lighting</li>
+                    <li><strong>Distance:</strong> Keep the barcode 6-12 inches from the camera</li>
+                    <li><strong>Angle:</strong> Hold the book flat and parallel to the camera</li>
+                    <li><strong>Focus:</strong> Wait for the camera to focus before scanning</li>
+                    <li><strong>File Upload:</strong> Use clear, high-resolution images</li>
+                </ul>
+            </div>
+        </details>
+    </div>
+</div>

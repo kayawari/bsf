@@ -2,7 +2,6 @@ from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from config import config
 import logging
-import os
 from pathlib import Path
 
 # Initialize extensions
@@ -34,15 +33,17 @@ def create_app(config_name="default"):
     db.init_app(app)
 
     # Import models to ensure they are registered with SQLAlchemy
-    from app.models import Book
+    from app.models import Book  # noqa: F401
 
     # Register error handlers
     register_error_handlers(app)
 
-    # Register blueprints (routes will be added in later tasks)
-    from app.routes import main
+    # Register blueprints
+    from app.routes import health_bp, book_bp, scan_bp
 
-    app.register_blueprint(main)
+    app.register_blueprint(health_bp)
+    app.register_blueprint(book_bp)
+    app.register_blueprint(scan_bp)
 
     return app
 
@@ -80,7 +81,7 @@ def configure_logging(app):
 
 def register_error_handlers(app):
     """Register global error handlers."""
-    from flask import render_template, request, jsonify
+    from flask import render_template, request
 
     @app.errorhandler(404)
     def not_found_error(error):

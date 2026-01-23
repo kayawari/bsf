@@ -1,6 +1,5 @@
 """Database initialization and management utilities."""
 
-import os
 from pathlib import Path
 from app import db, create_app
 from app.models import Book

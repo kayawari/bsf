@@ -11,8 +11,7 @@ from hypothesis import given, strategies as st, settings, HealthCheck
 from app import create_app, db
 from app.models.book import Book
 from app.services.isbn_service import (
-    validate_isbn, normalize_isbn, validate_isbn10, validate_isbn13,
-    clean_isbn, isbn10_to_isbn13, is_duplicate_isbn
+    validate_isbn, isbn10_to_isbn13, is_duplicate_isbn
 )
 
 
@@ -64,7 +63,7 @@ class TestISBNValidationProperties:
             is_valid, normalized, error = validate_isbn(valid_isbn10)
             
             # Should be valid and normalized to ISBN-13
-            assert is_valid == True
+            assert is_valid
             assert normalized is not None
             assert len(normalized) == 13
             assert normalized.startswith('978')
@@ -74,7 +73,7 @@ class TestISBNValidationProperties:
             formatted_isbn = f"{valid_isbn10[:1]}-{valid_isbn10[1:6]}-{valid_isbn10[6:9]}-{valid_isbn10[9]}"
             is_valid_formatted, normalized_formatted, error_formatted = validate_isbn(formatted_isbn)
             
-            assert is_valid_formatted == True
+            assert is_valid_formatted
             assert normalized_formatted == normalized
             assert error_formatted is None
     
@@ -109,7 +108,7 @@ class TestISBNValidationProperties:
             is_valid, normalized, error = validate_isbn(valid_isbn13)
             
             # Should be valid and normalized (same as input for ISBN-13)
-            assert is_valid == True
+            assert is_valid
             assert normalized == valid_isbn13
             assert error is None
             
@@ -117,7 +116,7 @@ class TestISBNValidationProperties:
             formatted_isbn = f"{valid_isbn13[:3]}-{valid_isbn13[3:4]}-{valid_isbn13[4:9]}-{valid_isbn13[9:12]}-{valid_isbn13[12]}"
             is_valid_formatted, normalized_formatted, error_formatted = validate_isbn(formatted_isbn)
             
-            assert is_valid_formatted == True
+            assert is_valid_formatted
             assert normalized_formatted == valid_isbn13
             assert error_formatted is None
 
@@ -172,7 +171,7 @@ class TestISBNDuplicatePreventionProperties:
                 is_duplicate, normalized_isbn, error = is_duplicate_isbn(valid_isbn13)
                 
                 # Should detect as duplicate
-                assert is_duplicate == True, "Should detect ISBN as duplicate"
+                assert is_duplicate, "Should detect ISBN as duplicate"
                 assert normalized_isbn == valid_isbn13, "Should return normalized ISBN"
                 assert error is None, "Should not return error for valid ISBN"
                 
@@ -180,7 +179,7 @@ class TestISBNDuplicatePreventionProperties:
                 formatted_isbn = f"{valid_isbn13[:3]}-{valid_isbn13[3:4]}-{valid_isbn13[4:9]}-{valid_isbn13[9:12]}-{valid_isbn13[12]}"
                 is_duplicate_formatted, normalized_formatted, error_formatted = is_duplicate_isbn(formatted_isbn)
                 
-                assert is_duplicate_formatted == True, "Should detect formatted ISBN as duplicate"
+                assert is_duplicate_formatted, "Should detect formatted ISBN as duplicate"
                 assert normalized_formatted == valid_isbn13, "Should normalize formatted ISBN correctly"
                 assert error_formatted is None, "Should not return error for valid formatted ISBN"
                 
@@ -230,7 +229,7 @@ class TestISBNDuplicatePreventionProperties:
                 is_duplicate, normalized_isbn, error = is_duplicate_isbn(valid_isbn10)
                 
                 # Should detect as duplicate (ISBN-10 normalizes to existing ISBN-13)
-                assert is_duplicate == True, "Should detect ISBN-10 as duplicate of existing ISBN-13"
+                assert is_duplicate, "Should detect ISBN-10 as duplicate of existing ISBN-13"
                 assert normalized_isbn == isbn13_equivalent, "Should normalize ISBN-10 to equivalent ISBN-13"
                 assert error is None, "Should not return error for valid ISBN-10"
                 
@@ -302,7 +301,7 @@ class TestISBNDuplicatePreventionProperties:
                 is_duplicate, normalized_isbn, error = is_duplicate_isbn(valid_isbn13_2)
                 
                 # Should NOT detect as duplicate
-                assert is_duplicate == False, "Should not detect different ISBN as duplicate"
+                assert not is_duplicate, "Should not detect different ISBN as duplicate"
                 assert normalized_isbn == valid_isbn13_2, "Should return normalized ISBN"
                 assert error is None, "Should not return error for valid ISBN"
                 
@@ -346,7 +345,7 @@ class TestISBNDuplicatePreventionProperties:
                 is_duplicate, normalized_isbn, error = is_duplicate_isbn(invalid_isbn)
                 
                 # Should not detect as duplicate (because it's invalid)
-                assert is_duplicate == False, "Invalid ISBN should not be detected as duplicate"
+                assert not is_duplicate, "Invalid ISBN should not be detected as duplicate"
                 assert normalized_isbn is None, "Should not return normalized ISBN for invalid input"
                 assert error is not None, "Should return error message for invalid ISBN"
                 assert isinstance(error, str), "Error should be a string"
@@ -397,7 +396,7 @@ class TestISBNInvalidRejectionProperties:
             is_valid, normalized, error = validate_isbn(invalid_input)
             
             # Should be invalid
-            assert is_valid == False
+            assert not is_valid
             assert normalized is None
             assert error is not None
             assert isinstance(error, str)
@@ -433,7 +432,7 @@ class TestISBNInvalidRejectionProperties:
                 is_valid, normalized, error = validate_isbn(invalid_isbn10)
                 
                 # Should be invalid
-                assert is_valid == False
+                assert not is_valid
                 assert normalized is None
                 assert error is not None
                 assert "checksum" in error.lower()
@@ -472,7 +471,7 @@ class TestISBNInvalidRejectionProperties:
                 is_valid, normalized, error = validate_isbn(invalid_isbn13)
                 
                 # Should be invalid
-                assert is_valid == False
+                assert not is_valid
                 assert normalized is None
                 assert error is not None
                 assert "checksum" in error.lower()
@@ -508,6 +507,6 @@ class TestISBNInvalidRejectionProperties:
             
             # Should be valid and normalized to clean ISBN
             if formatted_isbn.replace(' ', '').replace('-', '').replace('.', '') == base_isbn:
-                assert is_valid == True
+                assert is_valid
                 assert normalized == base_isbn
                 assert error is None

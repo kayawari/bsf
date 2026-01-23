@@ -7,16 +7,21 @@
     <header class="app-header">
         <h1>📚 Book Management</h1>
         <p class="app-subtitle">Manage your personal book collection</p>
+        <nav class="app-nav">
+            <a href="{{ url_for('scan.barcode_scanner') }}" class="nav-button">
+                📷 Scan Barcode
+            </a>
+        </nav>
     </header>
 
     <!-- ISBN Input Form -->
     <section class="isbn-input-section">
         <form id="isbn-form" 
-              hx-post="{{ url_for('main.add_book') }}"
+              hx-post="{{ url_for('book.add_book') }}"
               hx-target="#book-collection"
               hx-swap="innerHTML"
               hx-indicator="#loading-indicator"
-              action="{{ url_for('main.add_book') }}"
+              action="{{ url_for('book.add_book') }}"
               method="post">
             <div class="form-group">
                 <label for="isbn">Enter ISBN:</label>

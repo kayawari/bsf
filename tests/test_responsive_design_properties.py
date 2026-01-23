@@ -9,7 +9,6 @@ Feature: book-management, Property 27: Mobile Detail View Stacking
 Feature: book-management, Property 28: Touch Interface Sizing
 """
 
-import pytest
 import re
 from hypothesis import given, strategies as st, settings, HealthCheck
 from app import create_app, db

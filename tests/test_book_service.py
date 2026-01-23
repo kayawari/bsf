@@ -4,7 +4,6 @@ Tests for book service functionality.
 
 import pytest
 from datetime import date
-from unittest.mock import Mock, patch
 from app import create_app, db
 from app.models.book import Book
 from app.services.book_service import (

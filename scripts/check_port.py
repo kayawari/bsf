@@ -23,7 +23,7 @@ def check_port_usage(port=5000):
                 "1. On macOS, check System Settings > Sharing > AirPlay Receiver and disable it"
             )
             print("2. Or kill the process using the PID shown above")
-            print(f"3. Or use a different port: PORT=8080 python run.py")
+            print("3. Or use a different port: PORT=8080 python run.py")
         else:
             print(f"Port {port} appears to be available.")
 

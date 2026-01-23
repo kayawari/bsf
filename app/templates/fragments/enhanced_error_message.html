@@ -1,0 +1,360 @@
+<!-- Enhanced Error Message Fragment for Barcode Scanning -->
+<div class="enhanced-error-message" role="alert" aria-live="polite" data-error-type="{{ error_type or 'unknown' }}" data-severity="{{ severity or 'medium' }}">
+    
+    <!-- Error Icon and Header -->
+    <div class="error-header">
+        <div class="error-icon">
+            {% if severity == 'critical' %}
+                🚨
+            {% elif severity == 'high' %}
+                ⚠️
+            {% elif severity == 'medium' %}
+                ⚠️
+            {% else %}
+                ℹ️
+            {% endif %}
+        </div>
+        <div class="error-title">
+            {% if severity == 'critical' %}
+                Critical Error
+            {% elif severity == 'high' %}
+                Error
+            {% elif severity == 'medium' %}
+                Problem Detected
+            {% else %}
+                Notice
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Error Content -->
+    <div class="error-content">
+        <p class="error-message">{{ error_message }}</p>
+        
+        {% if suggested_action %}
+        <p class="suggested-action">
+            <strong>What to do:</strong> {{ suggested_action }}
+        </p>
+        {% endif %}
+    </div>
+
+    <!-- Recovery Actions -->
+    <div class="error-actions">
+        {% if show_retry %}
+        <button type="button" 
+                class="btn btn-primary error-action-btn"
+                onclick="location.reload()"
+                title="Try the same operation again">
+            🔄 Try Again
+        </button>
+        {% endif %}
+
+        {% if show_file_fallback %}
+        <button type="button" 
+                class="btn btn-secondary error-action-btn"
+                onclick="document.getElementById('file-scan-section').scrollIntoView(); document.getElementById('barcode-file-input-main').click()"
+                title="Upload an image file instead">
+            📁 Upload Image
+        </button>
+        {% endif %}
+
+        {% if show_manual_entry %}
+        <a href="{{ url_for('book.index') }}" 
+           class="btn btn-outline error-action-btn"
+           title="Enter ISBN manually">
+            ✏️ Manual Entry
+        </a>
+        {% endif %}
+    </div>
+
+    <!-- Additional Help for Specific Errors -->
+    {% if error_type == 'camera_permission_error' %}
+    <div class="error-help">
+        <details class="help-details">
+            <summary>How to enable camera access</summary>
+            <div class="help-content">
+                <ol>
+                    <li>Look for a camera icon in your browser's address bar</li>
+                    <li>Click it and select "Allow" for camera access</li>
+                    <li>Refresh the page and try again</li>
+                    <li>If that doesn't work, check your browser settings for camera permissions</li>
+                </ol>
+            </div>
+        </details>
+    </div>
+    {% elif error_type == 'barcode_detection_error' %}
+    <div class="error-help">
+        <details class="help-details">
+            <summary>Tips for better barcode scanning</summary>
+            <div class="help-content">
+                <ul>
+                    <li><strong>Lighting:</strong> Ensure good, even lighting on the barcode</li>
+                    <li><strong>Distance:</strong> Hold the book 6-12 inches from the camera</li>
+                    <li><strong>Stability:</strong> Keep the book and camera steady</li>
+                    <li><strong>Angle:</strong> Hold the book flat and parallel to the camera</li>
+                    <li><strong>Focus:</strong> Wait for the camera to focus before scanning</li>
+                </ul>
+            </div>
+        </details>
+    </div>
+    {% elif error_type == 'network_error' %}
+    <div class="error-help">
+        <details class="help-details">
+            <summary>Network troubleshooting</summary>
+            <div class="help-content">
+                <ul>
+                    <li>Check your internet connection</li>
+                    <li>Try refreshing the page</li>
+                    <li>If the problem persists, you can still add books manually</li>
+                    <li>Book information will be retrieved when the connection is restored</li>
+                </ul>
+            </div>
+        </details>
+    </div>
+    {% endif %}
+
+    <!-- Dismiss Button -->
+    <button type="button" 
+            class="error-dismiss-btn" 
+            onclick="this.parentElement.style.display='none'"
+            title="Dismiss this message"
+            aria-label="Dismiss error message">
+        ✕
+    </button>
+</div>
+
+<style>
+.enhanced-error-message {
+    background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+    border: 1px solid #f5c6cb;
+    border-radius: 8px;
+    color: #721c24;
+    padding: 1.25rem;
+    margin: 1rem 0;
+    position: relative;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    animation: slideIn 0.3s ease-out;
+}
+
+.enhanced-error-message[data-severity="critical"] {
+    background: linear-gradient(135deg, #f8d7da 0%, #e74c3c 100%);
+    border-color: #e74c3c;
+    color: #fff;
+}
+
+.enhanced-error-message[data-severity="high"] {
+    background: linear-gradient(135deg, #f8d7da 0%, #dc3545 100%);
+    border-color: #dc3545;
+}
+
+.enhanced-error-message[data-severity="low"] {
+    background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+    border-color: #ffeaa7;
+    color: #856404;
+}
+
+.error-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.error-icon {
+    font-size: 1.5rem;
+    flex-shrink: 0;
+}
+
+.error-title {
+    font-weight: 600;
+    font-size: 1.1rem;
+}
+
+.error-content {
+    margin-bottom: 1.25rem;
+}
+
+.error-message {
+    margin: 0 0 0.75rem 0;
+    font-weight: 500;
+    line-height: 1.4;
+}
+
+.suggested-action {
+    margin: 0;
+    font-size: 0.95rem;
+    opacity: 0.9;
+}
+
+.error-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.error-action-btn {
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    border: none;
+}
+
+.error-action-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.btn.btn-primary.error-action-btn {
+    background-color: #007bff;
+    color: white;
+}
+
+.btn.btn-secondary.error-action-btn {
+    background-color: #6c757d;
+    color: white;
+}
+
+.btn.btn-outline.error-action-btn {
+    background-color: transparent;
+    color: #721c24;
+    border: 1px solid #721c24;
+}
+
+.enhanced-error-message[data-severity="critical"] .btn.btn-outline.error-action-btn {
+    color: #fff;
+    border-color: #fff;
+}
+
+.error-help {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid rgba(114, 28, 36, 0.2);
+}
+
+.help-details {
+    font-size: 0.9rem;
+}
+
+.help-details summary {
+    cursor: pointer;
+    font-weight: 500;
+    padding: 0.25rem 0;
+    user-select: none;
+}
+
+.help-details summary:hover {
+    opacity: 0.8;
+}
+
+.help-content {
+    padding: 0.75rem 0 0 1rem;
+    line-height: 1.5;
+}
+
+.help-content ul, .help-content ol {
+    margin: 0;
+    padding-left: 1.25rem;
+}
+
+.help-content li {
+    margin-bottom: 0.5rem;
+}
+
+.error-dismiss-btn {
+    position: absolute;
+    top: 0.75rem;
+    right: 0.75rem;
+    background: none;
+    border: none;
+    font-size: 1.25rem;
+    cursor: pointer;
+    opacity: 0.6;
+    transition: opacity 0.2s ease;
+    padding: 0.25rem;
+    line-height: 1;
+}
+
+.error-dismiss-btn:hover {
+    opacity: 1;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .enhanced-error-message {
+        padding: 1rem;
+        margin: 0.75rem 0;
+    }
+    
+    .error-header {
+        margin-bottom: 0.75rem;
+    }
+    
+    .error-icon {
+        font-size: 1.25rem;
+    }
+    
+    .error-title {
+        font-size: 1rem;
+    }
+    
+    .error-actions {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    .error-action-btn {
+        justify-content: center;
+        padding: 0.75rem 1rem;
+    }
+    
+    .help-content {
+        padding-left: 0.5rem;
+    }
+    
+    .error-dismiss-btn {
+        top: 0.5rem;
+        right: 0.5rem;
+    }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    .enhanced-error-message {
+        border-width: 2px;
+    }
+    
+    .error-action-btn {
+        border-width: 2px;
+    }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+    .enhanced-error-message {
+        animation: none;
+    }
+    
+    .error-action-btn:hover {
+        transform: none;
+    }
+}
+</style>

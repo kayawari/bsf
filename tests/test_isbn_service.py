@@ -41,38 +41,38 @@ class TestISBNValidation:
     def test_validate_isbn10_valid(self):
         """Test valid ISBN-10 validation."""
         # Valid ISBN-10 examples
-        assert validate_isbn10("0306406152") == True
-        assert validate_isbn10("043942089X") == True
-        assert validate_isbn10("0201530821") == True
+        assert validate_isbn10("0306406152")
+        assert validate_isbn10("043942089X")
+        assert validate_isbn10("0201530821")
     
     def test_validate_isbn10_invalid(self):
         """Test invalid ISBN-10 validation."""
-        assert validate_isbn10("0306406153") == False  # Wrong checksum
-        assert validate_isbn10("030640615") == False   # Too short
-        assert validate_isbn10("03064061522") == False # Too long
-        assert validate_isbn10("030640615A") == False  # Invalid character
-        assert validate_isbn10("") == False
-        assert validate_isbn10(None) == False
+        assert not validate_isbn10("0306406153")  # Wrong checksum
+        assert not validate_isbn10("030640615")   # Too short
+        assert not validate_isbn10("03064061522") # Too long
+        assert not validate_isbn10("030640615A")  # Invalid character
+        assert not validate_isbn10("")
+        assert not validate_isbn10(None)
     
     def test_validate_isbn13_valid(self):
         """Test valid ISBN-13 validation."""
         # Valid ISBN-13 examples starting with 978
-        assert validate_isbn13("9780306406157") == True
-        assert validate_isbn13("9780439420891") == True
-        assert validate_isbn13("9780201530827") == True
+        assert validate_isbn13("9780306406157")
+        assert validate_isbn13("9780439420891")
+        assert validate_isbn13("9780201530827")
         # Valid ISBN-13 example starting with 979
-        assert validate_isbn13("9791234567896") == True  # Valid 979 ISBN with correct checksum
+        assert validate_isbn13("9791234567896")  # Valid 979 ISBN with correct checksum
     
     def test_validate_isbn13_invalid(self):
         """Test invalid ISBN-13 validation."""
-        assert validate_isbn13("9780306406158") == False  # Wrong checksum
-        assert validate_isbn13("978030640615") == False   # Too short
-        assert validate_isbn13("97803064061577") == False # Too long
-        assert validate_isbn13("978030640615A") == False  # Invalid character
-        assert validate_isbn13("1234567890123") == False  # Doesn't start with 978/979
-        assert validate_isbn13("9770306406157") == False  # Starts with 977 (not valid)
-        assert validate_isbn13("") == False
-        assert validate_isbn13(None) == False
+        assert not validate_isbn13("9780306406158")  # Wrong checksum
+        assert not validate_isbn13("978030640615")   # Too short
+        assert not validate_isbn13("97803064061577") # Too long
+        assert not validate_isbn13("978030640615A")  # Invalid character
+        assert not validate_isbn13("1234567890123")  # Doesn't start with 978/979
+        assert not validate_isbn13("9770306406157")  # Starts with 977 (not valid)
+        assert not validate_isbn13("")
+        assert not validate_isbn13(None)
     
     def test_isbn10_to_isbn13_conversion(self):
         """Test ISBN-10 to ISBN-13 conversion."""
@@ -117,18 +117,18 @@ class TestISBNValidation:
         """Test the main validate_isbn function."""
         # Valid cases
         is_valid, normalized, error = validate_isbn("978-0-306-40615-7")
-        assert is_valid == True
+        assert is_valid
         assert normalized == "9780306406157"
         assert error is None
         
         is_valid, normalized, error = validate_isbn("0-306-40615-2")
-        assert is_valid == True
+        assert is_valid
         assert normalized == "9780306406157"
         assert error is None
         
         # Invalid case
         is_valid, normalized, error = validate_isbn("invalid")
-        assert is_valid == False
+        assert not is_valid
         assert normalized is None
         assert error is not None
 
@@ -139,9 +139,9 @@ class TestDuplicateDetection:
     def test_check_isbn_exists_empty_db(self, app):
         """Test checking ISBN existence in empty database."""
         with app.app_context():
-            assert check_isbn_exists("9780306406157") == False
-            assert check_isbn_exists("") == False
-            assert check_isbn_exists(None) == False
+            assert not check_isbn_exists("9780306406157")
+            assert not check_isbn_exists("")
+            assert not check_isbn_exists(None)
     
     def test_check_isbn_exists_with_data(self, app):
         """Test checking ISBN existence with data in database."""
@@ -152,10 +152,10 @@ class TestDuplicateDetection:
             db.session.commit()
             
             # Check existing ISBN
-            assert check_isbn_exists("9780306406157") == True
+            assert check_isbn_exists("9780306406157")
             
             # Check non-existing ISBN
-            assert check_isbn_exists("9780439420891") == False
+            assert not check_isbn_exists("9780439420891")
     
     def test_is_duplicate_isbn(self, app):
         """Test comprehensive duplicate checking."""
@@ -167,18 +167,18 @@ class TestDuplicateDetection:
             
             # Test duplicate detection
             is_dup, normalized, error = is_duplicate_isbn("978-0-306-40615-7")
-            assert is_dup == True
+            assert is_dup
             assert normalized == "9780306406157"
             assert error is None
             
             # Test non-duplicate
             is_dup, normalized, error = is_duplicate_isbn("978-0-439-42089-1")
-            assert is_dup == False
+            assert not is_dup
             assert normalized == "9780439420891"
             assert error is None
             
             # Test invalid ISBN
             is_dup, normalized, error = is_duplicate_isbn("invalid")
-            assert is_dup == False
+            assert not is_dup
             assert normalized is None
             assert error is not None

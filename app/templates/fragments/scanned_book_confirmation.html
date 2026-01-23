@@ -1,0 +1,116 @@
+<!-- Scanned Book Confirmation Fragment -->
+<div class="book-confirmation-container">
+    
+    <!-- Warning message if any -->
+    {% if warning %}
+    <div class="alert alert-warning" role="alert">
+        <strong>Note:</strong> {{ warning }}
+    </div>
+    {% endif %}
+
+    <!-- Book information display -->
+    <div class="book-info-card">
+        <h2>Book Found</h2>
+        
+        <div class="book-details">
+            <!-- Book cover -->
+            <div class="book-cover">
+                {% if book.cover_url %}
+                <img src="{{ book.cover_url }}" alt="Cover of {{ book.title }}" class="cover-image">
+                {% else %}
+                <div class="cover-placeholder">
+                    <span class="cover-placeholder-text">No Cover</span>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Book metadata -->
+            <div class="book-metadata">
+                <h3 class="book-title">{{ book.title }}</h3>
+                
+                {% if book.authors_list %}
+                <p class="book-authors">
+                    <strong>Authors:</strong> {{ book.authors_list | join(', ') }}
+                </p>
+                {% endif %}
+
+                {% if book.isbn_13 %}
+                <p class="book-isbn">
+                    <strong>ISBN-13:</strong> {{ book.isbn_13 }}
+                </p>
+                {% elif book.isbn_10 %}
+                <p class="book-isbn">
+                    <strong>ISBN-10:</strong> {{ book.isbn_10 }}
+                </p>
+                {% endif %}
+
+                {% if book.publisher %}
+                <p class="book-publisher">
+                    <strong>Publisher:</strong> {{ book.publisher }}
+                </p>
+                {% endif %}
+
+                {% if book.published_date %}
+                <p class="book-published">
+                    <strong>Published:</strong> {{ book.published_date }}
+                </p>
+                {% endif %}
+
+                {% if book.page_count %}
+                <p class="book-pages">
+                    <strong>Pages:</strong> {{ book.page_count }}
+                </p>
+                {% endif %}
+
+                {% if book.description %}
+                <div class="book-description">
+                    <strong>Description:</strong>
+                    <p class="description-text">{{ book.description[:300] }}{% if book.description|length > 300 %}...{% endif %}</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirmation actions -->
+    <div class="confirmation-actions">
+        <h3>Add this book to your collection?</h3>
+        
+        <div class="action-buttons">
+            <!-- Save book button -->
+            <form method="POST" action="{{ url_for('scan.save_scanned_book') }}" class="inline-form">
+                <input type="hidden" name="book_id" value="{{ book.id }}">
+                <button type="submit" 
+                        class="btn btn-success btn-large"
+                        hx-post="{{ url_for('scan.save_scanned_book') }}"
+                        hx-target="#scan-result-container"
+                        hx-swap="innerHTML">
+                    ✅ Yes, Add Book
+                </button>
+            </form>
+
+            <!-- Return to camera button -->
+            <button type="button" 
+                    class="btn btn-primary btn-large"
+                    hx-get="{{ url_for('scan.barcode_scanner') }}"
+                    hx-target="#scan-result-container"
+                    hx-swap="innerHTML">
+                📷 Return to Camera
+            </button>
+
+            <!-- Cancel button -->
+            <button type="button" 
+                    class="btn btn-outline btn-large"
+                    hx-get="{{ url_for('scan.barcode_scanner') }}"
+                    hx-target="#scan-result-container"
+                    hx-swap="innerHTML">
+                ❌ Cancel
+            </button>
+        </div>
+
+        <!-- Alternative navigation -->
+        <div class="alternative-actions">
+            <a href="{{ url_for('book.index') }}" class="text-link">← Back to Collection</a>
+        </div>
+    </div>
+</div>

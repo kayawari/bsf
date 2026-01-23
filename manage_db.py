@@ -2,14 +2,13 @@
 """Database management script for the book management application."""
 
 import sys
-import os
 from pathlib import Path
 
 # Add the project root to Python path
 project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
 
-from app.database import init_database, drop_database, reset_database, get_database_info
+from app.database import init_database, drop_database, reset_database, get_database_info  # noqa: E402
 
 
 def main():

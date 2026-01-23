@@ -8,7 +8,7 @@ error handling and fallback behavior.
 
 import time
 import requests
-from typing import Optional, Dict, Any, List, Tuple
+from typing import Optional, Dict, Any, Tuple
 from datetime import datetime
 import logging
 
@@ -293,7 +293,7 @@ def search_book_by_isbn_with_retry(
                 time.sleep(sleep_time)
                 continue
             else:
-                error_msg = f"Unable to retrieve book information from Google Books API. Please check the ISBN and try again."
+                error_msg = "Unable to retrieve book information from Google Books API. Please check the ISBN and try again."
                 logger.error(
                     f"API request failed after {MAX_RETRIES} attempts: {str(e)}"
                 )
@@ -406,8 +406,8 @@ def get_book_metadata_by_isbn(
 
     # Search for book by ISBN
     api_response, search_error = search_book_by_isbn_with_retry(isbn)
-    if search_error:
-        return None, search_error
+    if search_error or api_response is None:
+        return None, search_error or "No API response received"
 
     # Extract metadata from response
     metadata, extract_error = extract_book_metadata(api_response)

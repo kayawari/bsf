@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block title %}Scan Barcode - Book Management{% endblock %}
+
+{% block content %}
+<div class="scanner-page">
+    <header class="scanner-header">
+        <h1>Scan Book Barcode</h1>
+        <nav class="scanner-nav">
+            <a href="{{ url_for('book.index') }}" class="nav-link">← Back to Collection</a>
+        </nav>
+    </header>
+
+    <main class="scanner-main">
+        <!-- Success message display -->
+        {% if success %}
+        <div class="alert alert-success" role="alert">
+            <strong>Success!</strong> {{ success }}
+        </div>
+        {% endif %}
+
+        <!-- Scanner container -->
+        <div id="scan-result-container">
+            {% include "fragments/barcode_scanner.html" %}
+        </div>
+    </main>
+</div>
+
+<!-- Include barcode scanner JavaScript -->
+<script src="{{ url_for('static', filename='js/barcode-scanner.js') }}" defer></script>
+{% endblock %}

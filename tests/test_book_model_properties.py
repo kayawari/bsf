@@ -2,7 +2,6 @@
 Property-based tests for Book model functionality.
 """
 
-import pytest
 from datetime import date, datetime
 from hypothesis import given, strategies as st, settings, HealthCheck
 from app import create_app, db
